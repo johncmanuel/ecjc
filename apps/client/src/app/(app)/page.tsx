@@ -1,5 +1,6 @@
 import EntryCard from "@/components/timeline/EntryCard";
 import Candle from "@/components/ui/Candle";
+import Link from "next/link";
 
 export default function TimelinePage() {
   return (
@@ -8,6 +9,13 @@ export default function TimelinePage() {
         <div className="text-[11px] uppercase tracking-wider text-ink-faint font-medium mb-2">
           Today
         </div>
+
+        <Link 
+          href="/streak-broken" 
+          className="px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded-md"
+        >
+          Simulate Broken Streak
+      </Link>
 
         <EntryCard
           author="b"
