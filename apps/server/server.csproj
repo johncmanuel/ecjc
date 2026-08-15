@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowMissingPrunePackageData>true</AllowMissingPrunePackageData>
+  </PropertyGroup>
+
+  <Target Name="gents" AfterTargets="Build" Condition=" '$(Configuration)' == 'Debug' And '$(RunNSwag)' != 'False' And Exists('nswag.json') ">
+    <Message Text="--- installing local tools using: dotnet tool restore ---" Importance="high" />
+    <Exec WorkingDirectory="$(ProjectDir)" Command="dotnet tool restore" />
+    <Message Text="--- generating NSwag typescript API client ---" Importance="high" />
+    <Exec WorkingDirectory="$(ProjectDir)" EnvironmentVariables="ASPNETCORE_ENVIRONMENT=Development" Command="dotnet nswag run nswag.json /variables:Configuration=$(Configuration)" />
+  </Target>
+
+
+</Project>
