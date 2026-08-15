@@ -1,26 +1,73 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-paper: var(--paper);
+  --color-paper-deep: var(--paper-deep);
+  --color-card: var(--card);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-thread-a: var(--thread-a);
+  --color-thread-a-soft: var(--thread-a-soft);
+  --color-thread-b: var(--thread-b);
+  --color-thread-b-soft: var(--thread-b-soft);
+  --color-glow: var(--glow);
+  --color-glow-soft: var(--glow-soft);
+  --color-line: var(--line);
+  --color-btn-text: var(--btn-text);
+
+  --font-serif: var(--font-fraunces), serif;
+  --font-sans: var(--font-work-sans), sans-serif;
+
+  --animate-flicker: flicker 3.2s ease-in-out infinite;
+}
+
+@keyframes flicker {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(0.94); }
+}
+
 :root {
-	--background: #ffffff;
-	--foreground: #171717;
+  --paper: #EDEFEA;
+  --paper-deep: #E3E6DE;
+  --card: #F7F8F4;
+  --ink: #2E332F;
+  --ink-soft: #6B7169;
+  --ink-faint: #9BA097;
+  --thread-a: #6E8F8A;
+  --thread-a-soft: #DCE5E2;
+  --thread-b: #9C8AA0;
+  --thread-b-soft: #E7E1E8;
+  --glow: #D3A24E;
+  --glow-soft: #F1E3C6;
+  --line: #D7DAD1;
+  --btn-text: #FCFCFA;
 }
 
-@theme inline {
-	--color-background: var(--background);
-	--color-foreground: var(--foreground);
-	--font-sans: var(--font-geist-sans);
-	--font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-	:root {
-		--background: #0a0a0a;
-		--foreground: #ededed;
-	}
+.dark {
+  --paper: #1B1F1C;
+  --paper-deep: #242923;
+  --card: #22261F;
+  --ink: #E7E9E1;
+  --ink-soft: #A7ADA2;
+  --ink-faint: #767C71;
+  --thread-a: #8FB3AE;
+  --thread-a-soft: #2B3A37;
+  --thread-b: #BBA6C4;
+  --thread-b-soft: #362E3C;
+  --glow: #E0B564;
+  --glow-soft: #3A2F1C;
+  --line: #33372F;
+  --btn-text: #1B1F1C;
 }
 
 body {
-	background: var(--background);
-	color: var(--foreground);
-	font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--paper);
+  color: var(--ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-flicker { animation: none !important; }
 }
