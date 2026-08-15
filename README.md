@@ -20,6 +20,16 @@ npm install
 dotnet tool restore
 ```
 
+### 3. Environment Variables
+
+Copy the provided example environment file to set up your local secrets:
+
+```bash
+cp .env.example .env
+```
+
+Review `.env` and fill in any required development values (like Postgres credentials or Stripe test keys). For the client, `API_URL` is only required for production builds.
+
 ## Development Commands
 
 Run applications individually or concurrently using native npm workspace commands:
