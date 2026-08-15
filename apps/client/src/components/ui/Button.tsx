@@ -4,6 +4,7 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "ink" | "soft" | "thread-a";
 };
 
+// base button
 export default function Button({ variant = "ink", className = "", children, ...props }: ButtonProps) {
   const base = "rounded-full text-sm font-semibold flex items-center justify-center gap-2 transition-opacity active:opacity-80";
   const variants = {

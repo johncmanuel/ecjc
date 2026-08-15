@@ -1,5 +1,6 @@
 import EntryCard from "@/components/timeline/EntryCard";
 import Candle from "@/components/ui/Candle";
+import { FabButton } from "@/components/ui/FabButton";
 import Link from "next/link";
 
 export default function TimelinePage() {
@@ -37,6 +38,8 @@ export default function TimelinePage() {
         <div className="font-serif text-4xl font-medium mt-4">14</div>
         <div className="text-xs text-ink-soft mt-1">days sharing something, together</div>
       </section>
+
+<FabButton href="/compose" label="New entry" />
     </main>
   );
 }

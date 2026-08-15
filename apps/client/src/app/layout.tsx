@@ -1,4 +1,5 @@
 import { Fraunces, Work_Sans } from "next/font/google";
+import { ThemeProvider, ThemeScript } from "@/components/ThemeProvider";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -20,10 +21,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    // add/remove "dark" here (or via next-themes) to switch palettes
-    <html lang="en" className={`${fraunces.variable} ${workSans.variable}`}>
+    <html lang="en" className={`${fraunces.variable} ${workSans.variable}`} suppressHydrationWarning>
+      <head>
+        <ThemeScript />
+      </head>
       <body className="font-sans bg-paper text-ink min-h-screen">
-        {children}
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );
