@@ -7,6 +7,11 @@
     <AllowMissingPrunePackageData>true</AllowMissingPrunePackageData>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.9" />
+    <PackageReference Include="NSwag.AspNetCore" Version="14.6.0" />
+  </ItemGroup>
+
   <Target Name="gents" AfterTargets="Build" Condition=" '$(Configuration)' == 'Debug' And '$(RunNSwag)' != 'False' And Exists('nswag.json') ">
     <Message Text="--- installing local tools using: dotnet tool restore ---" Importance="high" />
     <Exec WorkingDirectory="$(ProjectDir)" Command="dotnet tool restore" />

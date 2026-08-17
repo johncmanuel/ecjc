@@ -1,4 +1,7 @@
+"use client";
+
 import Candle from "@/components/ui/Candle";
+import { signIn } from "@/lib/auth-client";
 
 export default function SignInPage() {
   return (
@@ -14,7 +17,10 @@ export default function SignInPage() {
       </div>
 
       <div className="w-full">
-        <button className="w-full flex items-center justify-center gap-2.5 rounded-full border border-line bg-card px-5 py-3.5 text-sm font-medium text-ink">
+        <button 
+          onClick={() => signIn.social({ provider: "google", callbackURL: "/" })}
+          className="w-full flex items-center justify-center gap-2.5 rounded-full border border-line bg-card px-5 py-3.5 text-sm font-medium text-ink transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+        >
           <span
             className="w-4 h-4 rounded-full flex-shrink-0"
             style={{

@@ -1,14 +1,25 @@
+import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { Settings } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
+import { auth } from "@/lib/auth";
 
-export default function AppLayout({
+export default async function AppLayout({
   children,
   modal,
 }: {
   children: React.ReactNode;
   modal: React.ReactNode;
 }) {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  if (!session) {
+    redirect("/login");
+  }
+
   return (
     <div className="max-w-md mx-auto min-h-screen bg-paper relative flex flex-col">
       <header className="px-6 py-4 border-b border-line flex items-center justify-between">

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import StreakHero  from "@/components/streak/StreakHero";
 import SettingsRow  from "@/components/streak/SettingsRow";
+import SignOutButton from "@/components/ui/SignOutButton";
 
 export default function SettingsPage() {
   const [reminder, setReminder] = useState(true);
@@ -28,6 +29,10 @@ export default function SettingsPage() {
           on={moneyPledge}
           onToggle={() => setMoneyPledge((v) => !v)}
         />
+        
+        <div className="mt-8 px-1">
+          <SignOutButton />
+        </div>
       </div>
     </div>
   );

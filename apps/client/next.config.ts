@@ -1,4 +1,9 @@
 import type { NextConfig } from "next";
+import path from "path";
+import { loadEnvConfig } from "@next/env";
+
+// Load environment variables from the root workspace directory
+loadEnvConfig(path.resolve(process.cwd(), "../../"));
 
 const backendUrl =
 	process.env.NODE_ENV === "production"
@@ -6,6 +11,9 @@ const backendUrl =
 		: "http://localhost:5186";
 
 const nextConfig: NextConfig = {
+	turbopack: {
+		root: path.resolve(__dirname, "../../"),
+	},
 	async rewrites() {
 		return [
 			{
@@ -13,7 +21,8 @@ const nextConfig: NextConfig = {
 				destination: `${backendUrl}/health`,
 			},
 			{
-				source: "/api/:path*",
+				// redirect all paths except /api/auth/* to server 
+				source: "/api/:path((?!auth).*)",
 				destination: `${backendUrl}/api/:path*`,
 			},
 		];

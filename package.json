@@ -7,7 +7,8 @@
   "scripts": {
     "dev:client": "npm run dev -w client",
     "dev:server": "dotnet run --project apps/server",
-    "dev": "npm run dev:client & npm run dev:server"
+    "dev": "npm run dev:client & npm run dev:server",
+    "gen:secret": "openssl rand -base64 32"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.8"
