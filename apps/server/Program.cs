@@ -1,6 +1,10 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using server.Data;
+using server.Endpoints;
+using server.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,6 +26,14 @@ builder.Services.AddCors(options =>
 			.AllowAnyMethod();
 	});
 });
+
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+	?? throw new InvalidOperationException("Missing ConnectionStrings__DefaultConnection environment variable.");
+
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+	options.UseNpgsql(connectionString));
+
+builder.Services.AddSingleton<IStorageService, LocalStorageService>();
 
 var jwtSecret = builder.Configuration["Auth:Secret"]
 	?? Environment.GetEnvironmentVariable("BETTER_AUTH_SECRET")
@@ -48,26 +60,15 @@ var app = builder.Build();
 app.UseCors("DevCorsPolicy");
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseStaticFiles();
 app.UseOpenApi();
 
 app.MapHealthChecks("/health");
 
-// User sync endpoint — called by Better-Auth's sign-in hook to atomically
-// create or update the user in the backend database.
-app.MapPost("/api/users/sync", (UserSyncRequest userPayload) =>
-{
-	if (string.IsNullOrWhiteSpace(userPayload.Email))
-	{
-		return Results.BadRequest(new { error = "Invalid user payload" });
-	}
-
-	// TODO: Replace with actual database upsert logic (EF Core / Npgsql)
-	// For now, log the sync request and return success.
-	Console.WriteLine($"[User Sync] id={userPayload.Id} email={userPayload.Email} name={userPayload.Name}");
-
-	return Results.Ok(new { synced = true, email = userPayload.Email });
-});
+app.RegisterUserEndpoints();
+app.RegisterGroupEndpoints();
+app.RegisterEntryEndpoints();
+app.RegisterReactionEndpoints();
+app.RegisterMediaEndpoints();
 
 app.Run();
-
-record UserSyncRequest(string Id, string Email, string? Name, string? Image);

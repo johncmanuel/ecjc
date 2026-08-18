@@ -9,7 +9,35 @@
 
 export interface IApiClient {
 
-    postApiUsersSync(userPayload: UserSyncRequest, signal?: AbortSignal): Promise<void>;
+    syncUser(request: UserSyncRequest, signal?: AbortSignal): Promise<UserSyncResponse>;
+
+    getMe(signal?: AbortSignal): Promise<UserProfileResponse>;
+
+    getByCode(code: string, signal?: AbortSignal): Promise<UserPublicProfileResponse>;
+
+    getMyGroups(signal?: AbortSignal): Promise<GroupSummaryResponse[]>;
+
+    createGroup(signal?: AbortSignal): Promise<GroupSummaryResponse>;
+
+    getGroupDetails(id: string, signal?: AbortSignal): Promise<GroupDetailsResponse>;
+
+    inviteUserToGroup(id: string, request: InviteUserRequest, signal?: AbortSignal): Promise<GroupDetailsResponse>;
+
+    getEntries(groupId: string, skip: number, take: number, signal?: AbortSignal): Promise<PaginatedEntriesResponse>;
+
+    createEntry(groupId: string, request: CreateEntryRequest, signal?: AbortSignal): Promise<EntryResponse>;
+
+    updateEntry(id: string, request: UpdateEntryRequest, signal?: AbortSignal): Promise<EntryResponse>;
+
+    deleteEntry(id: string, signal?: AbortSignal): Promise<void>;
+
+    addReaction(entryId: string, request: AddReactionRequest, signal?: AbortSignal): Promise<ReactionResponse>;
+
+    removeReaction(entryId: string, emojiCode: string, signal?: AbortSignal): Promise<void>;
+
+    uploadMedia(entryId: string, file?: FileParameter | null | undefined, signal?: AbortSignal): Promise<MediaResponse>;
+
+    deleteMedia(id: string, signal?: AbortSignal): Promise<void>;
 }
 
 export class ApiClient implements IApiClient {
@@ -22,11 +50,11 @@ export class ApiClient implements IApiClient {
         this.baseUrl = baseUrl ?? "";
     }
 
-    postApiUsersSync(userPayload: UserSyncRequest, signal?: AbortSignal): Promise<void> {
+    syncUser(request: UserSyncRequest, signal?: AbortSignal): Promise<UserSyncResponse> {
         let url_ = this.baseUrl + "/api/users/sync";
         url_ = url_.replace(/[?&]$/, "");
 
-        const content_ = JSON.stringify(userPayload);
+        const content_ = JSON.stringify(request);
 
         let options_: RequestInit = {
             body: content_,
@@ -34,20 +62,663 @@ export class ApiClient implements IApiClient {
             signal,
             headers: {
                 "Content-Type": "application/json",
+                "Accept": "application/json"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processPostApiUsersSync(_response);
+            return this.processSyncUser(_response);
         });
     }
 
-    protected processPostApiUsersSync(response: Response): Promise<void> {
+    protected processSyncUser(response: Response): Promise<UserSyncResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
             return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as UserSyncResponse;
+            return result200;
+            });
+        } else if (status === 400) {
+            return response.text().then((_responseText) => {
+            let result400: any = null;
+            result400 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as ErrorResponse;
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<UserSyncResponse>(null as any);
+    }
+
+    getMe(signal?: AbortSignal): Promise<UserProfileResponse> {
+        let url_ = this.baseUrl + "/api/users/me";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            signal,
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processGetMe(_response);
+        });
+    }
+
+    protected processGetMe(response: Response): Promise<UserProfileResponse> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as UserProfileResponse;
+            return result200;
+            });
+        } else if (status === 404) {
+            return response.text().then((_responseText) => {
+            let result404: any = null;
+            result404 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as ErrorResponse;
+            return throwException("A server side error occurred.", status, _responseText, _headers, result404);
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<UserProfileResponse>(null as any);
+    }
+
+    getByCode(code: string, signal?: AbortSignal): Promise<UserPublicProfileResponse> {
+        let url_ = this.baseUrl + "/api/users/by-code/{code}";
+        if (code === undefined || code === null)
+            throw new globalThis.Error("The parameter 'code' must be defined.");
+        url_ = url_.replace("{code}", encodeURIComponent("" + code));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            signal,
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processGetByCode(_response);
+        });
+    }
+
+    protected processGetByCode(response: Response): Promise<UserPublicProfileResponse> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as UserPublicProfileResponse;
+            return result200;
+            });
+        } else if (status === 404) {
+            return response.text().then((_responseText) => {
+            let result404: any = null;
+            result404 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as ErrorResponse;
+            return throwException("A server side error occurred.", status, _responseText, _headers, result404);
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<UserPublicProfileResponse>(null as any);
+    }
+
+    getMyGroups(signal?: AbortSignal): Promise<GroupSummaryResponse[]> {
+        let url_ = this.baseUrl + "/api/groups";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            signal,
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processGetMyGroups(_response);
+        });
+    }
+
+    protected processGetMyGroups(response: Response): Promise<GroupSummaryResponse[]> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as GroupSummaryResponse[];
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<GroupSummaryResponse[]>(null as any);
+    }
+
+    createGroup(signal?: AbortSignal): Promise<GroupSummaryResponse> {
+        let url_ = this.baseUrl + "/api/groups";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "POST",
+            signal,
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processCreateGroup(_response);
+        });
+    }
+
+    protected processCreateGroup(response: Response): Promise<GroupSummaryResponse> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as GroupSummaryResponse;
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<GroupSummaryResponse>(null as any);
+    }
+
+    getGroupDetails(id: string, signal?: AbortSignal): Promise<GroupDetailsResponse> {
+        let url_ = this.baseUrl + "/api/groups/{id}";
+        if (id === undefined || id === null)
+            throw new globalThis.Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            signal,
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processGetGroupDetails(_response);
+        });
+    }
+
+    protected processGetGroupDetails(response: Response): Promise<GroupDetailsResponse> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as GroupDetailsResponse;
+            return result200;
+            });
+        } else if (status === 404) {
+            return response.text().then((_responseText) => {
+            let result404: any = null;
+            result404 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as ErrorResponse;
+            return throwException("A server side error occurred.", status, _responseText, _headers, result404);
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<GroupDetailsResponse>(null as any);
+    }
+
+    inviteUserToGroup(id: string, request: InviteUserRequest, signal?: AbortSignal): Promise<GroupDetailsResponse> {
+        let url_ = this.baseUrl + "/api/groups/{id}/users";
+        if (id === undefined || id === null)
+            throw new globalThis.Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "POST",
+            signal,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processInviteUserToGroup(_response);
+        });
+    }
+
+    protected processInviteUserToGroup(response: Response): Promise<GroupDetailsResponse> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as GroupDetailsResponse;
+            return result200;
+            });
+        } else if (status === 400) {
+            return response.text().then((_responseText) => {
+            let result400: any = null;
+            result400 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as ErrorResponse;
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+            });
+        } else if (status === 404) {
+            return response.text().then((_responseText) => {
+            let result404: any = null;
+            result404 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as ErrorResponse;
+            return throwException("A server side error occurred.", status, _responseText, _headers, result404);
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<GroupDetailsResponse>(null as any);
+    }
+
+    getEntries(groupId: string, skip: number, take: number, signal?: AbortSignal): Promise<PaginatedEntriesResponse> {
+        let url_ = this.baseUrl + "/api/groups/{groupId}/entries?";
+        if (groupId === undefined || groupId === null)
+            throw new globalThis.Error("The parameter 'groupId' must be defined.");
+        url_ = url_.replace("{groupId}", encodeURIComponent("" + groupId));
+        if (skip === undefined || skip === null)
+            throw new globalThis.Error("The parameter 'skip' must be defined and cannot be null.");
+        else
+            url_ += "skip=" + encodeURIComponent("" + skip) + "&";
+        if (take === undefined || take === null)
+            throw new globalThis.Error("The parameter 'take' must be defined and cannot be null.");
+        else
+            url_ += "take=" + encodeURIComponent("" + take) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            signal,
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processGetEntries(_response);
+        });
+    }
+
+    protected processGetEntries(response: Response): Promise<PaginatedEntriesResponse> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as PaginatedEntriesResponse;
+            return result200;
+            });
+        } else if (status === 404) {
+            return response.text().then((_responseText) => {
+            let result404: any = null;
+            result404 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as ErrorResponse;
+            return throwException("A server side error occurred.", status, _responseText, _headers, result404);
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<PaginatedEntriesResponse>(null as any);
+    }
+
+    createEntry(groupId: string, request: CreateEntryRequest, signal?: AbortSignal): Promise<EntryResponse> {
+        let url_ = this.baseUrl + "/api/groups/{groupId}/entries";
+        if (groupId === undefined || groupId === null)
+            throw new globalThis.Error("The parameter 'groupId' must be defined.");
+        url_ = url_.replace("{groupId}", encodeURIComponent("" + groupId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "POST",
+            signal,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processCreateEntry(_response);
+        });
+    }
+
+    protected processCreateEntry(response: Response): Promise<EntryResponse> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as EntryResponse;
+            return result200;
+            });
+        } else if (status === 400) {
+            return response.text().then((_responseText) => {
+            let result400: any = null;
+            result400 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as ErrorResponse;
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+            });
+        } else if (status === 404) {
+            return response.text().then((_responseText) => {
+            let result404: any = null;
+            result404 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as ErrorResponse;
+            return throwException("A server side error occurred.", status, _responseText, _headers, result404);
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<EntryResponse>(null as any);
+    }
+
+    updateEntry(id: string, request: UpdateEntryRequest, signal?: AbortSignal): Promise<EntryResponse> {
+        let url_ = this.baseUrl + "/api/entries/{id}";
+        if (id === undefined || id === null)
+            throw new globalThis.Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "PUT",
+            signal,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processUpdateEntry(_response);
+        });
+    }
+
+    protected processUpdateEntry(response: Response): Promise<EntryResponse> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as EntryResponse;
+            return result200;
+            });
+        } else if (status === 400) {
+            return response.text().then((_responseText) => {
+            let result400: any = null;
+            result400 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as ErrorResponse;
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+            });
+        } else if (status === 404) {
+            return response.text().then((_responseText) => {
+            let result404: any = null;
+            result404 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as ErrorResponse;
+            return throwException("A server side error occurred.", status, _responseText, _headers, result404);
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<EntryResponse>(null as any);
+    }
+
+    deleteEntry(id: string, signal?: AbortSignal): Promise<void> {
+        let url_ = this.baseUrl + "/api/entries/{id}";
+        if (id === undefined || id === null)
+            throw new globalThis.Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "DELETE",
+            signal,
+            headers: {
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processDeleteEntry(_response);
+        });
+    }
+
+    protected processDeleteEntry(response: Response): Promise<void> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 204) {
+            return response.text().then((_responseText) => {
             return;
+            });
+        } else if (status === 404) {
+            return response.text().then((_responseText) => {
+            let result404: any = null;
+            result404 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as ErrorResponse;
+            return throwException("A server side error occurred.", status, _responseText, _headers, result404);
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<void>(null as any);
+    }
+
+    addReaction(entryId: string, request: AddReactionRequest, signal?: AbortSignal): Promise<ReactionResponse> {
+        let url_ = this.baseUrl + "/api/entries/{entryId}/reactions";
+        if (entryId === undefined || entryId === null)
+            throw new globalThis.Error("The parameter 'entryId' must be defined.");
+        url_ = url_.replace("{entryId}", encodeURIComponent("" + entryId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "POST",
+            signal,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processAddReaction(_response);
+        });
+    }
+
+    protected processAddReaction(response: Response): Promise<ReactionResponse> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as ReactionResponse;
+            return result200;
+            });
+        } else if (status === 400) {
+            return response.text().then((_responseText) => {
+            let result400: any = null;
+            result400 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as ErrorResponse;
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+            });
+        } else if (status === 404) {
+            return response.text().then((_responseText) => {
+            let result404: any = null;
+            result404 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as ErrorResponse;
+            return throwException("A server side error occurred.", status, _responseText, _headers, result404);
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<ReactionResponse>(null as any);
+    }
+
+    removeReaction(entryId: string, emojiCode: string, signal?: AbortSignal): Promise<void> {
+        let url_ = this.baseUrl + "/api/entries/{entryId}/reactions/{emojiCode}";
+        if (entryId === undefined || entryId === null)
+            throw new globalThis.Error("The parameter 'entryId' must be defined.");
+        url_ = url_.replace("{entryId}", encodeURIComponent("" + entryId));
+        if (emojiCode === undefined || emojiCode === null)
+            throw new globalThis.Error("The parameter 'emojiCode' must be defined.");
+        url_ = url_.replace("{emojiCode}", encodeURIComponent("" + emojiCode));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "DELETE",
+            signal,
+            headers: {
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processRemoveReaction(_response);
+        });
+    }
+
+    protected processRemoveReaction(response: Response): Promise<void> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 204) {
+            return response.text().then((_responseText) => {
+            return;
+            });
+        } else if (status === 404) {
+            return response.text().then((_responseText) => {
+            let result404: any = null;
+            result404 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as ErrorResponse;
+            return throwException("A server side error occurred.", status, _responseText, _headers, result404);
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<void>(null as any);
+    }
+
+    uploadMedia(entryId: string, file?: FileParameter | null | undefined, signal?: AbortSignal): Promise<MediaResponse> {
+        let url_ = this.baseUrl + "/api/entries/{entryId}/media";
+        if (entryId === undefined || entryId === null)
+            throw new globalThis.Error("The parameter 'entryId' must be defined.");
+        url_ = url_.replace("{entryId}", encodeURIComponent("" + entryId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = new FormData();
+        if (file !== null && file !== undefined)
+            content_.append("file", file.data, file.fileName ? file.fileName : "file");
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "POST",
+            signal,
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processUploadMedia(_response);
+        });
+    }
+
+    protected processUploadMedia(response: Response): Promise<MediaResponse> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as MediaResponse;
+            return result200;
+            });
+        } else if (status === 400) {
+            return response.text().then((_responseText) => {
+            let result400: any = null;
+            result400 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as ErrorResponse;
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+            });
+        } else if (status === 404) {
+            return response.text().then((_responseText) => {
+            let result404: any = null;
+            result404 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as ErrorResponse;
+            return throwException("A server side error occurred.", status, _responseText, _headers, result404);
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<MediaResponse>(null as any);
+    }
+
+    deleteMedia(id: string, signal?: AbortSignal): Promise<void> {
+        let url_ = this.baseUrl + "/api/media/{id}";
+        if (id === undefined || id === null)
+            throw new globalThis.Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "DELETE",
+            signal,
+            headers: {
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processDeleteMedia(_response);
+        });
+    }
+
+    protected processDeleteMedia(response: Response): Promise<void> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 204) {
+            return response.text().then((_responseText) => {
+            return;
+            });
+        } else if (status === 404) {
+            return response.text().then((_responseText) => {
+            let result404: any = null;
+            result404 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as ErrorResponse;
+            return throwException("A server side error occurred.", status, _responseText, _headers, result404);
             });
         } else if (status !== 200 && status !== 204) {
             return response.text().then((_responseText) => {
@@ -58,11 +729,112 @@ export class ApiClient implements IApiClient {
     }
 }
 
+export interface UserSyncResponse {
+    synced?: boolean;
+    email?: string;
+}
+
+export interface ErrorResponse {
+    error?: string;
+}
+
 export interface UserSyncRequest {
     id?: string;
     email?: string;
     name?: string | undefined;
     image?: string | undefined;
+}
+
+export interface UserProfileResponse {
+    id?: string;
+    email?: string;
+    firstName?: string | undefined;
+    lastName?: string | undefined;
+    friendCode?: string;
+    image?: string | undefined;
+    createdAt?: Date;
+}
+
+export interface UserPublicProfileResponse {
+    id?: string;
+    firstName?: string | undefined;
+    lastName?: string | undefined;
+    image?: string | undefined;
+}
+
+export interface GroupSummaryResponse {
+    id?: string;
+    members?: GroupMemberResponse[];
+    streakCount?: number;
+    updatedAt?: Date;
+}
+
+export interface GroupMemberResponse {
+    userId?: string;
+    firstName?: string | undefined;
+    lastName?: string | undefined;
+    image?: string | undefined;
+}
+
+export interface GroupDetailsResponse {
+    id?: string;
+    members?: GroupMemberResponse[];
+    streakCount?: number;
+    createdAt?: Date;
+    updatedAt?: Date;
+}
+
+export interface InviteUserRequest {
+    friendCode?: string;
+}
+
+export interface PaginatedEntriesResponse {
+    items?: EntryResponse[];
+    totalCount?: number;
+    skip?: number;
+    take?: number;
+}
+
+export interface EntryResponse {
+    id?: string;
+    textContent?: string;
+    authorId?: string;
+    authorFirstName?: string | undefined;
+    authorLastName?: string | undefined;
+    authorImage?: string | undefined;
+    createdAt?: Date;
+    updatedAt?: Date;
+    media?: MediaResponse[];
+    reactions?: ReactionResponse[];
+}
+
+export interface MediaResponse {
+    id?: string;
+    url?: string;
+    mediaType?: string;
+}
+
+export interface ReactionResponse {
+    id?: string;
+    emojiCode?: string;
+    userId?: string;
+}
+
+export interface CreateEntryRequest {
+    textContent?: string;
+}
+
+export interface UpdateEntryRequest {
+    textContent?: string;
+}
+
+export interface AddReactionRequest {
+    emojiCode?: string;
+}
+
+export interface FileParameter {
+    data: any;
+    fileName: string;
 }
 
 export class ApiException extends Error {
