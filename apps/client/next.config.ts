@@ -21,6 +21,10 @@ const nextConfig: NextConfig = {
 				destination: `${backendUrl}/health`,
 			},
 			{
+				source: "/uploads/:path*",
+				destination: `${backendUrl}/uploads/:path*`,
+			},
+			{
 				// redirect all paths except /api/auth/* to server 
 				source: "/api/:path((?!auth).*)",
 				destination: `${backendUrl}/api/:path*`,

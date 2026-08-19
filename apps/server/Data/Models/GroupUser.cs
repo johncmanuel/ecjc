@@ -9,4 +9,5 @@ public class GroupUser
     public Group Group { get; set; } = null!;
 
     public DateTimeOffset JoinedAt { get; set; }
+    public DateTimeOffset? LeftAt { get; set; }
 }

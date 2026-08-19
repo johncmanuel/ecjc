@@ -78,6 +78,10 @@ public static class EntryEndpoints
         var isMember = await db.GroupUsers.AnyAsync(gu => gu.GroupId == groupId && gu.UserId == userId);
         if (!isMember) return TypedResults.NotFound(new UserEndpoints.ErrorResponse("Group not found."));
 
+        // Block posting until both members have joined
+        var memberCount = await db.GroupUsers.CountAsync(gu => gu.GroupId == groupId);
+        if (memberCount < 2) return TypedResults.BadRequest(new UserEndpoints.ErrorResponse("You can't post until your partner accepts the invite."));
+
         var wordCount = request.TextContent.Split([' ', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries).Length;
         if (wordCount < _minWordCount) return TypedResults.BadRequest(new UserEndpoints.ErrorResponse($"Entry must be at least {_minWordCount} words."));
         if (wordCount > _maxWordCount) return TypedResults.BadRequest(new UserEndpoints.ErrorResponse($"Entry cannot exceed {_maxWordCount} words."));

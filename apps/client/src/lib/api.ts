@@ -21,7 +21,11 @@ export interface IApiClient {
 
     getGroupDetails(id: string, signal?: AbortSignal): Promise<GroupDetailsResponse>;
 
-    inviteUserToGroup(id: string, request: InviteUserRequest, signal?: AbortSignal): Promise<GroupDetailsResponse>;
+    inviteUserToGroup(id: string, request: InviteUserRequest, signal?: AbortSignal): Promise<InviteCreatedResponse>;
+
+    leaveGroup(id: string, signal?: AbortSignal): Promise<void>;
+
+    reinviteUser(id: string, signal?: AbortSignal): Promise<InviteCreatedResponse>;
 
     getEntries(groupId: string, skip: number, take: number, signal?: AbortSignal): Promise<PaginatedEntriesResponse>;
 
@@ -38,6 +42,16 @@ export interface IApiClient {
     uploadMedia(entryId: string, file?: FileParameter | null | undefined, signal?: AbortSignal): Promise<MediaResponse>;
 
     deleteMedia(id: string, signal?: AbortSignal): Promise<void>;
+
+    getPendingInvites(signal?: AbortSignal): Promise<PendingInviteResponse[]>;
+
+    getSentInvites(signal?: AbortSignal): Promise<SentInviteResponse[]>;
+
+    acceptInvite(id: string, signal?: AbortSignal): Promise<AcceptInviteResponse>;
+
+    declineInvite(id: string, signal?: AbortSignal): Promise<void>;
+
+    cancelInvite(id: string, signal?: AbortSignal): Promise<void>;
 }
 
 export class ApiClient implements IApiClient {
@@ -288,7 +302,7 @@ export class ApiClient implements IApiClient {
         return Promise.resolve<GroupDetailsResponse>(null as any);
     }
 
-    inviteUserToGroup(id: string, request: InviteUserRequest, signal?: AbortSignal): Promise<GroupDetailsResponse> {
+    inviteUserToGroup(id: string, request: InviteUserRequest, signal?: AbortSignal): Promise<InviteCreatedResponse> {
         let url_ = this.baseUrl + "/api/groups/{id}/users";
         if (id === undefined || id === null)
             throw new globalThis.Error("The parameter 'id' must be defined.");
@@ -312,13 +326,13 @@ export class ApiClient implements IApiClient {
         });
     }
 
-    protected processInviteUserToGroup(response: Response): Promise<GroupDetailsResponse> {
+    protected processInviteUserToGroup(response: Response): Promise<InviteCreatedResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
             return response.text().then((_responseText) => {
             let result200: any = null;
-            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as GroupDetailsResponse;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as InviteCreatedResponse;
             return result200;
             });
         } else if (status === 400) {
@@ -338,7 +352,96 @@ export class ApiClient implements IApiClient {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<GroupDetailsResponse>(null as any);
+        return Promise.resolve<InviteCreatedResponse>(null as any);
+    }
+
+    leaveGroup(id: string, signal?: AbortSignal): Promise<void> {
+        let url_ = this.baseUrl + "/api/groups/{id}/leave";
+        if (id === undefined || id === null)
+            throw new globalThis.Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "POST",
+            signal,
+            headers: {
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processLeaveGroup(_response);
+        });
+    }
+
+    protected processLeaveGroup(response: Response): Promise<void> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 204) {
+            return response.text().then((_responseText) => {
+            return;
+            });
+        } else if (status === 404) {
+            return response.text().then((_responseText) => {
+            let result404: any = null;
+            result404 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as ErrorResponse;
+            return throwException("A server side error occurred.", status, _responseText, _headers, result404);
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<void>(null as any);
+    }
+
+    reinviteUser(id: string, signal?: AbortSignal): Promise<InviteCreatedResponse> {
+        let url_ = this.baseUrl + "/api/groups/{id}/reinvite";
+        if (id === undefined || id === null)
+            throw new globalThis.Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "POST",
+            signal,
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processReinviteUser(_response);
+        });
+    }
+
+    protected processReinviteUser(response: Response): Promise<InviteCreatedResponse> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as InviteCreatedResponse;
+            return result200;
+            });
+        } else if (status === 400) {
+            return response.text().then((_responseText) => {
+            let result400: any = null;
+            result400 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as ErrorResponse;
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+            });
+        } else if (status === 404) {
+            return response.text().then((_responseText) => {
+            let result404: any = null;
+            result404 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as ErrorResponse;
+            return throwException("A server side error occurred.", status, _responseText, _headers, result404);
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<InviteCreatedResponse>(null as any);
     }
 
     getEntries(groupId: string, skip: number, take: number, signal?: AbortSignal): Promise<PaginatedEntriesResponse> {
@@ -727,6 +830,215 @@ export class ApiClient implements IApiClient {
         }
         return Promise.resolve<void>(null as any);
     }
+
+    getPendingInvites(signal?: AbortSignal): Promise<PendingInviteResponse[]> {
+        let url_ = this.baseUrl + "/api/invites/pending";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            signal,
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processGetPendingInvites(_response);
+        });
+    }
+
+    protected processGetPendingInvites(response: Response): Promise<PendingInviteResponse[]> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as PendingInviteResponse[];
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<PendingInviteResponse[]>(null as any);
+    }
+
+    getSentInvites(signal?: AbortSignal): Promise<SentInviteResponse[]> {
+        let url_ = this.baseUrl + "/api/invites/sent";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            signal,
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processGetSentInvites(_response);
+        });
+    }
+
+    protected processGetSentInvites(response: Response): Promise<SentInviteResponse[]> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as SentInviteResponse[];
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<SentInviteResponse[]>(null as any);
+    }
+
+    acceptInvite(id: string, signal?: AbortSignal): Promise<AcceptInviteResponse> {
+        let url_ = this.baseUrl + "/api/invites/{id}/accept";
+        if (id === undefined || id === null)
+            throw new globalThis.Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "POST",
+            signal,
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processAcceptInvite(_response);
+        });
+    }
+
+    protected processAcceptInvite(response: Response): Promise<AcceptInviteResponse> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as AcceptInviteResponse;
+            return result200;
+            });
+        } else if (status === 400) {
+            return response.text().then((_responseText) => {
+            let result400: any = null;
+            result400 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as ErrorResponse;
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+            });
+        } else if (status === 404) {
+            return response.text().then((_responseText) => {
+            let result404: any = null;
+            result404 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as ErrorResponse;
+            return throwException("A server side error occurred.", status, _responseText, _headers, result404);
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<AcceptInviteResponse>(null as any);
+    }
+
+    declineInvite(id: string, signal?: AbortSignal): Promise<void> {
+        let url_ = this.baseUrl + "/api/invites/{id}/decline";
+        if (id === undefined || id === null)
+            throw new globalThis.Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "POST",
+            signal,
+            headers: {
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processDeclineInvite(_response);
+        });
+    }
+
+    protected processDeclineInvite(response: Response): Promise<void> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 204) {
+            return response.text().then((_responseText) => {
+            return;
+            });
+        } else if (status === 400) {
+            return response.text().then((_responseText) => {
+            let result400: any = null;
+            result400 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as ErrorResponse;
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+            });
+        } else if (status === 404) {
+            return response.text().then((_responseText) => {
+            let result404: any = null;
+            result404 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as ErrorResponse;
+            return throwException("A server side error occurred.", status, _responseText, _headers, result404);
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<void>(null as any);
+    }
+
+    cancelInvite(id: string, signal?: AbortSignal): Promise<void> {
+        let url_ = this.baseUrl + "/api/invites/{id}/cancel";
+        if (id === undefined || id === null)
+            throw new globalThis.Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "POST",
+            signal,
+            headers: {
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processCancelInvite(_response);
+        });
+    }
+
+    protected processCancelInvite(response: Response): Promise<void> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 204) {
+            return response.text().then((_responseText) => {
+            return;
+            });
+        } else if (status === 400) {
+            return response.text().then((_responseText) => {
+            let result400: any = null;
+            result400 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as ErrorResponse;
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+            });
+        } else if (status === 404) {
+            return response.text().then((_responseText) => {
+            let result404: any = null;
+            result404 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as ErrorResponse;
+            return throwException("A server side error occurred.", status, _responseText, _headers, result404);
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<void>(null as any);
+    }
 }
 
 export interface UserSyncResponse {
@@ -774,6 +1086,7 @@ export interface GroupMemberResponse {
     firstName?: string | undefined;
     lastName?: string | undefined;
     image?: string | undefined;
+    hasLeft?: boolean;
 }
 
 export interface GroupDetailsResponse {
@@ -782,6 +1095,10 @@ export interface GroupDetailsResponse {
     streakCount?: number;
     createdAt?: Date;
     updatedAt?: Date;
+}
+
+export interface InviteCreatedResponse {
+    inviteId?: string;
 }
 
 export interface InviteUserRequest {
@@ -830,6 +1147,30 @@ export interface UpdateEntryRequest {
 
 export interface AddReactionRequest {
     emojiCode?: string;
+}
+
+export interface PendingInviteResponse {
+    id?: string;
+    groupId?: string;
+    inviterId?: string;
+    inviterFirstName?: string | undefined;
+    inviterLastName?: string | undefined;
+    inviterImage?: string | undefined;
+    createdAt?: Date;
+}
+
+export interface SentInviteResponse {
+    id?: string;
+    groupId?: string;
+    inviteeId?: string;
+    inviteeFirstName?: string | undefined;
+    inviteeLastName?: string | undefined;
+    inviteeImage?: string | undefined;
+    createdAt?: Date;
+}
+
+export interface AcceptInviteResponse {
+    groupId?: string;
 }
 
 export interface FileParameter {

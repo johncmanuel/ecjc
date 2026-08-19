@@ -1,5 +1,6 @@
 import { Fraunces, Work_Sans } from "next/font/google";
 import { ThemeProvider, ThemeScript } from "@/components/ThemeProvider";
+import { NotificationProvider } from "@/components/NotificationProvider";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -27,7 +28,9 @@ export default function RootLayout({
       </head>
       <body className="font-sans bg-paper text-ink min-h-screen">
         <ThemeProvider>
-          {children}
+          <NotificationProvider>
+            {children}
+          </NotificationProvider>
         </ThemeProvider>
       </body>
     </html>

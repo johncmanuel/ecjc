@@ -1,4 +1,3 @@
-using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -34,22 +33,39 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 	options.UseNpgsql(connectionString));
 
 builder.Services.AddSingleton<IStorageService, LocalStorageService>();
+builder.Services.AddSingleton<CentrifugoService>();
 
-var jwtSecret = builder.Configuration["Auth:Secret"]
-	?? Environment.GetEnvironmentVariable("BETTER_AUTH_SECRET")
-	?? "dummy_secret_for_build_purposes_only_must_be_long_enough_32bytes_minimum_length_here";
+var betterAuthUrl = builder.Configuration["Auth:BaseUrl"]
+	?? Environment.GetEnvironmentVariable("BETTER_AUTH_URL")
+	?? "http://localhost:3000";
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 	.AddJwtBearer(options =>
 	{
+		// NOTE: better-auth's jwt() plugin signs tokens with EdDSA by default (https://better-auth.com/docs/plugins/jwt#algorithm-of-the-key-pair).
+		// Validate them using the JWKS endpoint it exposes.
+		options.RequireHttpsMetadata = false;
 		options.TokenValidationParameters = new TokenValidationParameters
 		{
 			ValidateIssuerSigningKey = true,
-			IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
 			ValidateIssuer = false,
 			ValidateAudience = false,
 			ValidateLifetime = true,
 			ClockSkew = TimeSpan.FromMinutes(1),
+		};
+		options.Events = new JwtBearerEvents
+		{
+			OnMessageReceived = async ctx =>
+			{
+				if (ctx.Options.TokenValidationParameters.IssuerSigningKeys == null ||
+					!ctx.Options.TokenValidationParameters.IssuerSigningKeys.Any())
+				{
+					using var http = new HttpClient();
+					var jwksJson = await http.GetStringAsync($"{betterAuthUrl}/api/auth/jwks");
+					var jwks = new JsonWebKeySet(jwksJson);
+					ctx.Options.TokenValidationParameters.IssuerSigningKeys = jwks.GetSigningKeys();
+				}
+			}
 		};
 	});
 
@@ -70,5 +86,6 @@ app.RegisterGroupEndpoints();
 app.RegisterEntryEndpoints();
 app.RegisterReactionEndpoints();
 app.RegisterMediaEndpoints();
+app.RegisterInviteEndpoints();
 
 app.Run();

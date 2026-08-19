@@ -11,6 +11,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Entry> Entries => Set<Entry>();
     public DbSet<MediaAttachment> MediaAttachments => Set<MediaAttachment>();
     public DbSet<Reaction> Reactions => Set<Reaction>();
+    public DbSet<GroupInvite> GroupInvites => Set<GroupInvite>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -89,6 +90,31 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             // Prevent dupe reactions based on the variables like same user, same emoji, same entry
             e.HasIndex(r => new { r.EntryId, r.UserId, r.EmojiCode }).IsUnique();
         });
+
+        modelBuilder.Entity<GroupInvite>(e =>
+        {
+            e.HasKey(gi => gi.Id);
+            e.Property(gi => gi.Id).HasDefaultValueSql("gen_random_uuid()");
+            e.Property(gi => gi.Status)
+                .HasConversion<string>()
+                .HasMaxLength(32);
+            e.HasOne(gi => gi.Group)
+                .WithMany()
+                .HasForeignKey(gi => gi.GroupId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(gi => gi.Inviter)
+                .WithMany()
+                .HasForeignKey(gi => gi.InviterId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(gi => gi.Invitee)
+                .WithMany()
+                .HasForeignKey(gi => gi.InviteeId)
+                .OnDelete(DeleteBehavior.Restrict);
+            // Prevent duplicate pending invites from the same inviter to the same invitee in the same group
+            e.HasIndex(gi => new { gi.GroupId, gi.InviterId, gi.InviteeId })
+                .HasFilter("\"Status\" = 'Pending'")
+                .IsUnique();
+        });
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
@@ -105,12 +131,14 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 else if (entry.Entity is GroupUser gu) { gu.JoinedAt = now; }
                 else if (entry.Entity is MediaAttachment m) { m.UploadedAt = now; }
                 else if (entry.Entity is Reaction r) { r.CreatedAt = now; }
+                else if (entry.Entity is GroupInvite gi) { gi.CreatedAt = now; gi.UpdatedAt = now; }
             }
             else if (entry.State == EntityState.Modified)
             {
                 if (entry.Entity is User u) { u.UpdatedAt = now; }
                 else if (entry.Entity is Group g) { g.UpdatedAt = now; }
                 else if (entry.Entity is Entry en) { en.UpdatedAt = now; }
+                else if (entry.Entity is GroupInvite gi) { gi.UpdatedAt = now; }
             }
         }
 

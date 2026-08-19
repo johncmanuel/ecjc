@@ -24,15 +24,19 @@ export const auth = betterAuth({
   },
   plugins: [
     bearer(),
-    jwt(),
+    jwt({
+      jwks: {
+        keyPairConfig: {
+          // match same algorithm as used by better-auth for signing JWTs 
+          alg: "ES256",
+        },
+      },
+    }),
   ],
   hooks: {
     before: createAuthMiddleware(async (_ctx) => {
-      if (!process.env.GOOGLE_CLIENT_ID) {
-        throw new Error("Missing GOOGLE_CLIENT_ID environment variable");
-      }
-      if (!process.env.GOOGLE_CLIENT_SECRET) {
-        throw new Error("Missing GOOGLE_CLIENT_SECRET environment variable");
+      if (!process.env.GOOGLE_CLIENT_ID && typeof window === "undefined") {
+        console.warn("Missing GOOGLE_CLIENT_ID environment variable");
       }
     }),
   },
@@ -42,7 +46,7 @@ export const auth = betterAuth({
         after: async (user) => {
           const client = new ApiClient(backendUrl, { fetch: (...args) => fetch(...args) });
           try {
-            await client.postApiUsersSync({
+            await client.syncUser({
               id: user.id,
               email: user.email,
               name: user.name ?? undefined,
@@ -57,7 +61,7 @@ export const auth = betterAuth({
         after: async (user) => {
           const client = new ApiClient(backendUrl, { fetch: (...args) => fetch(...args) });
           try {
-            await client.postApiUsersSync({
+            await client.syncUser({
               id: user.id,
               email: user.email,
               name: user.name ?? undefined,

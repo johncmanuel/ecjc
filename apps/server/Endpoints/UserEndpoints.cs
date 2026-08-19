@@ -58,6 +58,12 @@ public static class UserEndpoints
                 existingUser.FirstName = nameParts.Length > 0 ? nameParts[0] : existingUser.FirstName;
                 existingUser.LastName = nameParts.Length > 1 ? nameParts[1] : existingUser.LastName;
             }
+
+            // if for some reason the user doesn't have a friend code, generate one for them
+            if (string.IsNullOrEmpty(existingUser.FriendCode))
+            {
+                existingUser.FriendCode = GenerateFriendCode();
+            }
         }
 
         await db.SaveChangesAsync();
@@ -74,8 +80,14 @@ public static class UserEndpoints
         var userId = claimsUser.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId)) return TypedResults.Unauthorized();
 
-        var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId);
         if (user is null) return TypedResults.NotFound(new ErrorResponse("User not found in database."));
+
+        if (string.IsNullOrEmpty(user.FriendCode))
+        {
+            user.FriendCode = GenerateFriendCode();
+            await db.SaveChangesAsync();
+        }
 
         return TypedResults.Ok(new UserProfileResponse(
             user.Id,
