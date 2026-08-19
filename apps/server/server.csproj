@@ -25,4 +25,7 @@
   </Target>
 
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="server.tests" />
+  </ItemGroup>
 </Project>

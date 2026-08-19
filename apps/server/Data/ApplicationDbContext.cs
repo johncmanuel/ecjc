@@ -3,8 +3,14 @@ using server.Data.Models;
 
 namespace server.Data;
 
-public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : DbContext(options)
+public class ApplicationDbContext : DbContext
 {
+    private readonly TimeProvider _timeProvider;
+
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, TimeProvider timeProvider = null) : base(options)
+    {
+        _timeProvider = timeProvider ?? TimeProvider.System;
+    }
     public DbSet<User> Users => Set<User>();
     public DbSet<Group> Groups => Set<Group>();
     public DbSet<GroupUser> GroupUsers => Set<GroupUser>();
@@ -119,7 +125,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        var now = DateTimeOffset.UtcNow;
+        var now = _timeProvider.GetUtcNow();
 
         foreach (var entry in ChangeTracker.Entries())
         {

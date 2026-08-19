@@ -58,3 +58,10 @@ Run applications individually or concurrently using native npm workspace command
 | `npm run dev:server` | Starts ASP.NET Core server only | `http://localhost:5186` |
 | `npm run generate-secret` | Generates a 32-byte secret via `openssl` | — |
 
+## Testing
+
+To run the server tests, run the following command from root:
+
+```bash
+dotnet test apps/server.tests
+```

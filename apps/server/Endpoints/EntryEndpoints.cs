@@ -70,7 +70,8 @@ public static class EntryEndpoints
         Guid groupId,
         CreateEntryRequest request,
         ClaimsPrincipal claimsUser,
-        ApplicationDbContext db)
+        ApplicationDbContext db,
+        TimeProvider timeProvider)
     {
         var userId = claimsUser.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId)) return TypedResults.Unauthorized();
@@ -96,7 +97,33 @@ public static class EntryEndpoints
         db.Entries.Add(entry);
         
         var group = await db.Groups.FindAsync(groupId);
-        group?.UpdatedAt = DateTimeOffset.UtcNow;
+        if (group != null)
+        {
+            var now = timeProvider.GetUtcNow();
+            
+            if (group.StreakCount == 0)
+            {
+                group.StreakCount = 1;
+            }
+            else
+            {
+                var lastPostDate = group.UpdatedAt.UtcDateTime.Date;
+                var currentDate = now.UtcDateTime.Date;
+                
+                var daysDifference = (currentDate - lastPostDate).Days;
+                
+                if (daysDifference == 1)
+                {
+                    group.StreakCount++;
+                }
+                else if (daysDifference > 1)
+                {
+                    group.StreakCount = 1;
+                }
+            }
+            
+            group.UpdatedAt = now;
+        }
 
         await db.SaveChangesAsync();
 

@@ -34,6 +34,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 builder.Services.AddSingleton<IStorageService, LocalStorageService>();
 builder.Services.AddSingleton<CentrifugoService>();
+builder.Services.AddSingleton(TimeProvider.System);
 
 var betterAuthUrl = builder.Configuration["Auth:BaseUrl"]
 	?? Environment.GetEnvironmentVariable("BETTER_AUTH_URL")
@@ -89,3 +90,4 @@ app.RegisterMediaEndpoints();
 app.RegisterInviteEndpoints();
 
 app.Run();
+public partial class Program { }
