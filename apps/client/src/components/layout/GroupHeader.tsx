@@ -4,11 +4,22 @@ import { useState, useRef, useEffect } from "react";
 import { useGroups } from "@/components/GroupProvider";
 import { ChevronDown, Check } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
+// represents the left side of the header, which includes the title and the active group name
 export function GroupHeader() {
   const { groups, activeGroup, setActiveGroupId, isLoading } = useGroups();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
+
+  // bring user to top of page when clicking on the title if already on the home page
+  const handleTitleClick = (e: React.MouseEvent) => {
+    if (pathname === "/") {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
 
   // close dropdown when clicking/pressing outside of the header
   useEffect(() => {
@@ -25,7 +36,7 @@ export function GroupHeader() {
     return (
       <div>
         <h1 className="font-serif text-xl font-medium text-ink dark:text-ink-faint">
-          <Link href="/" className="hover:text-ink transition-colors">
+          <Link href="/" onClick={handleTitleClick} className="hover:text-ink transition-colors">
             ecjc
           </Link>
         </h1>
@@ -38,7 +49,7 @@ export function GroupHeader() {
     return (
       <div>
         <h1 className="font-serif text-xl font-medium text-ink dark:text-ink-faint">
-          <Link href="/" className="hover:text-ink transition-colors">
+          <Link href="/" onClick={handleTitleClick} className="hover:text-ink transition-colors">
           ecjc
           </Link>
         </h1>
@@ -57,7 +68,7 @@ export function GroupHeader() {
   return (
     <div className="relative" ref={dropdownRef}>
       <h1 className="font-serif text-xl font-medium text-ink dark:text-ink-faint">
-        <Link href="/" className="hover:text-ink transition-colors">
+        <Link href="/" onClick={handleTitleClick} className="hover:text-ink transition-colors">
           ecjc
         </Link>
       </h1>

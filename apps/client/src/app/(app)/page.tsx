@@ -3,7 +3,7 @@
 import EntryCard from "@/components/timeline/EntryCard";
 import { FabButton } from "@/components/ui/FabButton";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { EntryResponse, UserProfileResponse } from "@/lib/api";
 import { useGroups } from "@/components/GroupProvider";
 import { useApi } from "@/hooks/useApi";
@@ -22,6 +22,10 @@ export default function TimelinePage() {
   const [isLoadingEntries, setIsLoadingEntries] = useState(false);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const scrollDirection = useScrollDirection();
+
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const observerTarget = useRef<HTMLDivElement>(null);
 
   // TODO: improve typing for the group members and entries, and handle cases where the data might be incomplete or missing.
 
@@ -43,6 +47,11 @@ export default function TimelinePage() {
         ]);
         setMe(meData);
         setEntries(entriesData.items || []);
+        if (process.env.NODE_ENV !== 'production') {
+          setHasMore(true); // Force true in dev so the mock generator can run
+        } else {
+          setHasMore((entriesData.items || []).length === 50);
+        }
       } catch (err) {
         console.error("Failed to fetch entries", err);
       } finally {
@@ -53,11 +62,74 @@ export default function TimelinePage() {
     fetchEntries();
   }, [activeGroup, api]);
 
+  // Infinite scroll logic
+  const loadMore = useCallback(async () => {
+    if (isLoadingMore || !hasMore || !activeGroup) return;
+    setIsLoadingMore(true);
+    try {
+      const skip = entries.length;
+      const take = 50;
+      
+      let newItems: EntryResponse[] = [];
+
+      // generate mock entries in development mode for testing infinite scrolling
+      if (process.env.NODE_ENV !== 'production') {
+        await new Promise(resolve => setTimeout(resolve, 800)); // fake delay
+        newItems = Array.from({ length: take }).map((_, i) => ({
+          id: `mock-${skip + i}`,
+          textContent: `This is mock post #${skip + i + 1} to test infinite scrolling.`,
+          authorId: me?.id || "mock-author",
+          authorFirstName: "Mock",
+          authorLastName: "User",
+          createdAt: new Date(Date.now() - (skip + i) * 3600000), // 1 hour apart
+          media: [],
+          reactions: []
+        }));
+      } else {
+        const data = await api.getEntries(activeGroup.id!, skip, take);
+        newItems = data.items || [];
+      }
+
+      if (newItems.length === 0) {
+        setHasMore(false);
+      } else {
+        setEntries(prev => {
+          const existingIds = new Set(prev.map(e => e.id));
+          const filtered = newItems.filter(item => !existingIds.has(item.id));
+          return [...prev, ...filtered];
+        });
+        if (newItems.length < take) {
+          setHasMore(false);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load more entries", err);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [activeGroup, api, entries.length, hasMore, isLoadingMore, me?.id]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (observerEntries) => {
+        if (observerEntries[0].isIntersecting) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1, rootMargin: "200px" } // Load a bit before it enters the viewport
+    );
+    
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+    
+    return () => observer.disconnect();
+  }, [loadMore]);
+
   if (isLoading || !activeGroup) {
     return <div className="flex justify-center items-center h-64 text-ink-soft">Loading timeline...</div>;
   }
 
-  const partner = activeGroup.members!.find(m => !m.hasLeft) || activeGroup.members!.find(m => m.hasLeft); // The other person (or just picking the last for now)
   // To properly find the partner we'd need our own ID, but since the group only has 2 people max,
   // we can find the one that hasLeft, or just show the UI if ANY member hasLeft.
   const hasLeftMember = activeGroup.members!.some(m => m.hasLeft);
@@ -136,26 +208,45 @@ export default function TimelinePage() {
           <div className="flex justify-center py-8">
             <Loader2 className="animate-spin text-ink-soft w-6 h-6" />
           </div>
-        ) : entries.length === 0 ? (
+        ) : entries.length === 0 && !hasMore ? (
           <div className="text-center py-8 text-ink-soft text-sm">
             No entries yet. Be the first to share something!
           </div>
         ) : (
-          entries.map(entry => {
-            const isMe = entry.authorId === me?.id;
-            const timeStr = new Date(entry.createdAt!).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+          <>
+            {entries.map(entry => {
+              const isMe = entry.authorId === me?.id;
+              const timeStr = entry.createdAt ? new Date(entry.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
+              
+              return (
+                <EntryCard
+                  key={entry.id}
+                  author={isMe ? "a" : "b"}
+                  authorName={isMe ? "You" : (entry.authorFirstName || "Someone")}
+                  time={timeStr}
+                  text={entry.textContent || ""}
+                  media={entry.media || []}
+                />
+              );
+            })}
             
-            return (
-              <EntryCard
-                key={entry.id}
-                author={isMe ? "a" : "b"}
-                authorName={isMe ? "You" : (entry.authorFirstName || "Someone")}
-                time={timeStr}
-                text={entry.textContent || ""}
-                media={entry.media || []}
-              />
-            );
-          })
+            {hasMore && (
+              <div ref={observerTarget} className="flex justify-center py-6">
+                {isLoadingMore ? (
+                  <Loader2 className="animate-spin text-ink-soft w-5 h-5" />
+                ) : (
+                  // Empty placeholder to maintain height
+                  <div className="h-5 w-5" /> 
+                )}
+              </div>
+            )}
+            
+            {!hasMore && entries.length > 0 && (
+              <div className="text-center py-8 text-ink-faint text-xs">
+                You've reached the end of the timeline.
+              </div>
+            )}
+          </>
         )}
       </section>
 
