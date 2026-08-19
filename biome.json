@@ -6,7 +6,7 @@
 		"useIgnoreFile": true 
 	},
 	"files": {
-		"includes": ["client/**/*"]
+		"includes": ["apps/client/**/*", "!apps/client/src/lib/api.ts"]
 	},
 	"formatter": {
 		"enabled": true,
