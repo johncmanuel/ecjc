@@ -7,7 +7,7 @@ public class ApplicationDbContext : DbContext
 {
     private readonly TimeProvider _timeProvider;
 
-    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, TimeProvider timeProvider = null) : base(options)
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, TimeProvider? timeProvider = null) : base(options)
     {
         _timeProvider = timeProvider ?? TimeProvider.System;
     }
