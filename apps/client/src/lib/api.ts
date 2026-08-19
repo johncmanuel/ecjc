@@ -1053,7 +1053,8 @@ export interface ErrorResponse {
 export interface UserSyncRequest {
     id?: string;
     email?: string;
-    name?: string | undefined;
+    firstName?: string | undefined;
+    lastName?: string | undefined;
     image?: string | undefined;
 }
 

@@ -16,10 +16,22 @@ const backendUrl =
 export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
   secret: process.env.BETTER_AUTH_SECRET,
+  user: {
+    additionalFields: {
+      firstName: { type: "string", required: false },
+      lastName: { type: "string", required: false },
+    },
+  },
   socialProviders: {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      mapProfileToUser: (profile) => {
+        return {
+          firstName: profile.given_name,
+          lastName: profile.family_name,
+        };
+      },
     },
   },
   plugins: [
@@ -49,7 +61,8 @@ export const auth = betterAuth({
             await client.syncUser({
               id: user.id,
               email: user.email,
-              name: user.name ?? undefined,
+              firstName: (user as any).firstName ?? undefined,
+              lastName: (user as any).lastName ?? undefined,
               image: user.image ?? undefined,
             });
           } catch (error: any) {
@@ -64,7 +77,8 @@ export const auth = betterAuth({
             await client.syncUser({
               id: user.id,
               email: user.email,
-              name: user.name ?? undefined,
+              firstName: (user as any).firstName ?? undefined,
+              lastName: (user as any).lastName ?? undefined,
               image: user.image ?? undefined,
             });
           } catch (error: any) {

@@ -31,16 +31,12 @@ public static class UserEndpoints
 
         if (existingUser is null)
         {
-            var nameParts = (request.Name ?? "").Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
-            var firstName = nameParts.Length > 0 ? nameParts[0] : null;
-            var lastName = nameParts.Length > 1 ? nameParts[1] : null;
-
             var user = new User
             {
                 Id = request.Id,
                 Email = request.Email,
-                FirstName = firstName,
-                LastName = lastName,
+                FirstName = request.FirstName,
+                LastName = request.LastName,
                 Image = request.Image,
                 FriendCode = GenerateFriendCode(),
             };
@@ -52,11 +48,14 @@ public static class UserEndpoints
             existingUser.Email = request.Email;
             existingUser.Image = request.Image;
 
-            if (!string.IsNullOrWhiteSpace(request.Name))
+            if (!string.IsNullOrWhiteSpace(request.FirstName))
             {
-                var nameParts = request.Name.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
-                existingUser.FirstName = nameParts.Length > 0 ? nameParts[0] : existingUser.FirstName;
-                existingUser.LastName = nameParts.Length > 1 ? nameParts[1] : existingUser.LastName;
+                existingUser.FirstName = request.FirstName;
+            }
+            
+            if (!string.IsNullOrWhiteSpace(request.LastName))
+            {
+                existingUser.LastName = request.LastName;
             }
 
             // if for some reason the user doesn't have a friend code, generate one for them
@@ -68,7 +67,7 @@ public static class UserEndpoints
 
         await db.SaveChangesAsync();
 
-        Console.WriteLine($"[User Sync] id={request.Id} email={request.Email} name={request.Name}");
+        Console.WriteLine($"[User Sync] id={request.Id} email={request.Email} firstName={request.FirstName} lastName={request.LastName}");
 
         return TypedResults.Ok(new UserSyncResponse(true, request.Email));
     }
@@ -128,7 +127,7 @@ public static class UserEndpoints
         });
     }
 
-    internal sealed record UserSyncRequest(string Id, string Email, string? Name, string? Image);
+    internal sealed record UserSyncRequest(string Id, string Email, string? FirstName, string? LastName, string? Image);
     internal sealed record UserSyncResponse(bool Synced, string Email);
     internal sealed record ErrorResponse(string Error);
     internal sealed record UserProfileResponse(string Id, string Email, string? FirstName, string? LastName, string FriendCode, string? Image, DateTimeOffset CreatedAt);
