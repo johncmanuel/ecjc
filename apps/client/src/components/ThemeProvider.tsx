@@ -62,7 +62,8 @@ export function useTheme() {
   return context;
 }
 
-// Render this in <head> to prevent FOUC
+// Must render this in <head> to prevent FOUC
+// https://en.wikipedia.org/wiki/Flash_of_unstyled_content
 export function ThemeScript() {
   const scriptContent = `
     (() => {
