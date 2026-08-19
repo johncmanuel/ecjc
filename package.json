@@ -7,7 +7,8 @@
   "scripts": {
     "dev:client": "npm run dev -w client",
     "dev:server": "dotnet run --project apps/server",
-    "dev": "npm run dev:client & npm run dev:server",
+    "dev": "trap 'kill 0' EXIT INT TERM; npm run dev:client & npm run dev:server & wait",
+    "db:wipe": "dotnet ef database drop -f --project apps/server && dotnet ef database update --project apps/server",
     "gen:secret": "openssl rand -base64 32"
   },
   "devDependencies": {
