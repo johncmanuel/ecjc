@@ -50,7 +50,7 @@ export default function InvitePage() {
     }
   };
 
-  const handleJoin = async (e: React.FormEvent) => {
+  const handleJoin: React.FormEventHandler<HTMLFormElement> = async (e) => {
     e.preventDefault();
     if (!friendCode.trim()) return;
 
