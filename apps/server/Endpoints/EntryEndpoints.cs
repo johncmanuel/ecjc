@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using server.Data;
 using server.Data.Models;
+using server.Services;
 
 namespace server.Endpoints;
 
@@ -71,7 +72,8 @@ public static class EntryEndpoints
         CreateEntryRequest request,
         ClaimsPrincipal claimsUser,
         ApplicationDbContext db,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        StripeService stripeService)
     {
         var userId = claimsUser.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId)) return TypedResults.Unauthorized();
@@ -119,6 +121,29 @@ public static class EntryEndpoints
                 else if (daysDifference > 1)
                 {
                     group.StreakCount = 1;
+
+                    // Streak broke! Charge penalty for all members who opted in
+                    var groupMembers = await db.GroupUsers
+                        .Include(gu => gu.User)
+                        .Where(gu => gu.GroupId == groupId)
+                        .Select(gu => gu.User)
+                        .ToListAsync();
+
+                    foreach (var member in groupMembers)
+                    {
+                        if (member.IsPenaltyEnabled && !string.IsNullOrEmpty(member.StripeCustomerId) && member.PenaltyAmount > 0)
+                        {
+                            try
+                            {
+                                await stripeService.ChargeCustomerAsync(member.StripeCustomerId, member.PenaltyAmount, $"Penalty for broken streak in group {group.Id}");
+                                Console.WriteLine($"Charged {member.Email} penalty of {member.PenaltyAmount} cents.");
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"Failed to charge {member.Email}: {ex.Message}");
+                            }
+                        }
+                    }
                 }
             }
             

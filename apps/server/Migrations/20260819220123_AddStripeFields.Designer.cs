@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using server.Data;
@@ -11,9 +12,11 @@ using server.Data;
 namespace server.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260819220123_AddStripeFields")]
+    partial class AddStripeFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,70 +24,6 @@ namespace server.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
-
-            modelBuilder.Entity("server.Data.Models.Account", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
-                        .HasColumnName("id");
-
-                    b.Property<string>("AccessToken")
-                        .HasColumnType("text")
-                        .HasColumnName("accessToken");
-
-                    b.Property<DateTimeOffset?>("AccessTokenExpiresAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("accessTokenExpiresAt");
-
-                    b.Property<string>("AccountId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("accountId");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("createdAt");
-
-                    b.Property<string>("IdToken")
-                        .HasColumnType("text")
-                        .HasColumnName("idToken");
-
-                    b.Property<string>("Password")
-                        .HasColumnType("text")
-                        .HasColumnName("password");
-
-                    b.Property<string>("ProviderId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("providerId");
-
-                    b.Property<string>("RefreshToken")
-                        .HasColumnType("text")
-                        .HasColumnName("refreshToken");
-
-                    b.Property<DateTimeOffset?>("RefreshTokenExpiresAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("refreshTokenExpiresAt");
-
-                    b.Property<string>("Scope")
-                        .HasColumnType("text")
-                        .HasColumnName("scope");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updatedAt");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("userId");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("account", (string)null);
-                });
 
             modelBuilder.Entity("server.Data.Models.Entry", b =>
                 {
@@ -203,31 +142,6 @@ namespace server.Migrations
                     b.ToTable("GroupUsers");
                 });
 
-            modelBuilder.Entity("server.Data.Models.Jwks", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
-                        .HasColumnName("id");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("createdAt");
-
-                    b.Property<string>("PrivateKey")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("privateKey");
-
-                    b.Property<string>("PublicKey")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("publicKey");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("jwks", (string)null);
-                });
-
             modelBuilder.Entity("server.Data.Models.MediaAttachment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -291,161 +205,54 @@ namespace server.Migrations
                     b.ToTable("Reactions");
                 });
 
-            modelBuilder.Entity("server.Data.Models.Session", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
-                        .HasColumnName("id");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("createdAt");
-
-                    b.Property<DateTimeOffset>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("expiresAt");
-
-                    b.Property<string>("IpAddress")
-                        .HasColumnType("text")
-                        .HasColumnName("ipAddress");
-
-                    b.Property<string>("Token")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("token");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updatedAt");
-
-                    b.Property<string>("UserAgent")
-                        .HasColumnType("text")
-                        .HasColumnName("userAgent");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("userId");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("session", (string)null);
-                });
-
             modelBuilder.Entity("server.Data.Models.User", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("text")
-                        .HasColumnName("id");
+                        .HasColumnType("text");
 
                     b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("createdAt");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(320)
-                        .HasColumnType("character varying(320)")
-                        .HasColumnName("email");
-
-                    b.Property<bool>("EmailVerified")
-                        .HasColumnType("boolean")
-                        .HasColumnName("emailVerified");
+                        .HasColumnType("character varying(320)");
 
                     b.Property<string>("FirstName")
                         .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
-                        .HasColumnName("firstName");
+                        .HasColumnType("character varying(128)");
 
                     b.Property<string>("FriendCode")
                         .IsRequired()
                         .HasMaxLength(32)
-                        .HasColumnType("character varying(32)")
-                        .HasColumnName("friendCode");
+                        .HasColumnType("character varying(32)");
 
                     b.Property<string>("Image")
                         .HasMaxLength(2048)
-                        .HasColumnType("character varying(2048)")
-                        .HasColumnName("image");
+                        .HasColumnType("character varying(2048)");
 
                     b.Property<bool>("IsPenaltyEnabled")
-                        .HasColumnType("boolean")
-                        .HasColumnName("isPenaltyEnabled");
+                        .HasColumnType("boolean");
 
                     b.Property<string>("LastName")
                         .HasMaxLength(128)
-                        .HasColumnType("character varying(128)")
-                        .HasColumnName("lastName");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("name");
+                        .HasColumnType("character varying(128)");
 
                     b.Property<int>("PenaltyAmount")
-                        .HasColumnType("integer")
-                        .HasColumnName("penaltyAmount");
+                        .HasColumnType("integer");
 
                     b.Property<string>("StripeCustomerId")
-                        .HasColumnType("text")
-                        .HasColumnName("stripeCustomerId");
+                        .HasColumnType("text");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updatedAt");
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
                     b.HasIndex("FriendCode")
                         .IsUnique();
 
-                    b.ToTable("user", (string)null);
-                });
-
-            modelBuilder.Entity("server.Data.Models.Verification", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
-                        .HasColumnName("id");
-
-                    b.Property<DateTimeOffset?>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("createdAt");
-
-                    b.Property<DateTimeOffset>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("expiresAt");
-
-                    b.Property<string>("Identifier")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("identifier");
-
-                    b.Property<DateTimeOffset?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updatedAt");
-
-                    b.Property<string>("Value")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("value");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("verification", (string)null);
-                });
-
-            modelBuilder.Entity("server.Data.Models.Account", b =>
-                {
-                    b.HasOne("server.Data.Models.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
+                    b.ToTable("Users");
                 });
 
             modelBuilder.Entity("server.Data.Models.Entry", b =>
@@ -539,17 +346,6 @@ namespace server.Migrations
                         .IsRequired();
 
                     b.Navigation("Entry");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("server.Data.Models.Session", b =>
-                {
-                    b.HasOne("server.Data.Models.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
 
                     b.Navigation("User");
                 });

@@ -2,8 +2,6 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using server.Data;
-using server.Data.Models;
-using System.Security.Cryptography;
 
 namespace server.Endpoints;
 
@@ -13,63 +11,8 @@ public static class UserEndpoints
     {
         var endpoints = app.MapGroup("/api/users").WithTags("Users");
 
-        endpoints.MapPost("/sync", SyncUser).WithName("SyncUser");
         endpoints.MapGet("/me", GetMe).RequireAuthorization().WithName("GetMe");
         endpoints.MapGet("/by-code/{code}", GetByCode).RequireAuthorization().WithName("GetByCode");
-    }
-
-    internal static async Task<Results<Ok<UserSyncResponse>, BadRequest<ErrorResponse>>> SyncUser(
-        UserSyncRequest request,
-        ApplicationDbContext db)
-    {
-        if (string.IsNullOrWhiteSpace(request.Email))
-        {
-            return TypedResults.BadRequest(new ErrorResponse("Invalid user payload: Email is required."));
-        }
-
-        var existingUser = await db.Users.FindAsync(request.Id);
-
-        if (existingUser is null)
-        {
-            var user = new User
-            {
-                Id = request.Id,
-                Email = request.Email,
-                FirstName = request.FirstName,
-                LastName = request.LastName,
-                Image = request.Image,
-                FriendCode = GenerateFriendCode(),
-            };
-
-            db.Users.Add(user);
-        }
-        else
-        {
-            existingUser.Email = request.Email;
-            existingUser.Image = request.Image;
-
-            if (!string.IsNullOrWhiteSpace(request.FirstName))
-            {
-                existingUser.FirstName = request.FirstName;
-            }
-            
-            if (!string.IsNullOrWhiteSpace(request.LastName))
-            {
-                existingUser.LastName = request.LastName;
-            }
-
-            // if for some reason the user doesn't have a friend code, generate one for them
-            if (string.IsNullOrEmpty(existingUser.FriendCode))
-            {
-                existingUser.FriendCode = GenerateFriendCode();
-            }
-        }
-
-        await db.SaveChangesAsync();
-
-        Console.WriteLine($"[User Sync] id={request.Id} email={request.Email} firstName={request.FirstName} lastName={request.LastName}");
-
-        return TypedResults.Ok(new UserSyncResponse(true, request.Email));
     }
 
     internal static async Task<Results<Ok<UserProfileResponse>, NotFound<ErrorResponse>, UnauthorizedHttpResult>> GetMe(
@@ -82,11 +25,6 @@ public static class UserEndpoints
         var user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId);
         if (user is null) return TypedResults.NotFound(new ErrorResponse("User not found in database."));
 
-        if (string.IsNullOrEmpty(user.FriendCode))
-        {
-            user.FriendCode = GenerateFriendCode();
-            await db.SaveChangesAsync();
-        }
 
         return TypedResults.Ok(new UserProfileResponse(
             user.Id,
@@ -114,21 +52,6 @@ public static class UserEndpoints
         ));
     }
 
-    private static string GenerateFriendCode()
-    {
-        const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-        return string.Create(32, chars, (span, state) =>
-        {
-            var bytes = RandomNumberGenerator.GetBytes(32);
-            for (int i = 0; i < span.Length; i++)
-            {
-                span[i] = state[bytes[i] % state.Length];
-            }
-        });
-    }
-
-    internal sealed record UserSyncRequest(string Id, string Email, string? FirstName, string? LastName, string? Image);
-    internal sealed record UserSyncResponse(bool Synced, string Email);
     internal sealed record ErrorResponse(string Error);
     internal sealed record UserProfileResponse(string Id, string Email, string? FirstName, string? LastName, string FriendCode, string? Image, DateTimeOffset CreatedAt);
     internal sealed record UserPublicProfileResponse(string Id, string? FirstName, string? LastName, string? Image);

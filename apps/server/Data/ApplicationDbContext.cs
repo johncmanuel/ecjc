@@ -3,14 +3,10 @@ using server.Data.Models;
 
 namespace server.Data;
 
-public class ApplicationDbContext : DbContext
+public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, TimeProvider? timeProvider = null) : DbContext(options)
 {
-    private readonly TimeProvider _timeProvider;
+    private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
 
-    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, TimeProvider? timeProvider = null) : base(options)
-    {
-        _timeProvider = timeProvider ?? TimeProvider.System;
-    }
     public DbSet<User> Users => Set<User>();
     public DbSet<Group> Groups => Set<Group>();
     public DbSet<GroupUser> GroupUsers => Set<GroupUser>();
@@ -19,19 +15,95 @@ public class ApplicationDbContext : DbContext
     public DbSet<Reaction> Reactions => Set<Reaction>();
     public DbSet<GroupInvite> GroupInvites => Set<GroupInvite>();
 
+    // Better Auth auxiliary tables
+    public DbSet<Session> Sessions => Set<Session>();
+    public DbSet<Account> Accounts => Set<Account>();
+    public DbSet<Verification> Verifications => Set<Verification>();
+    public DbSet<Jwks> Jwks => Set<Jwks>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
+        // https://better-auth.com/docs/concepts/database#core-schema
         modelBuilder.Entity<User>(e =>
         {
+            // Map to lowercase "user" table for better-auth compatibility
+            e.ToTable("user");
+
             e.HasKey(u => u.Id);
-            e.Property(u => u.Email).IsRequired().HasMaxLength(320);
-            e.Property(u => u.FirstName).HasMaxLength(128);
-            e.Property(u => u.LastName).HasMaxLength(128);
-            e.Property(u => u.FriendCode).IsRequired().HasMaxLength(32);
+            e.Property(u => u.Id).HasColumnName("id");
+            e.Property(u => u.Email).HasColumnName("email").IsRequired().HasMaxLength(320);
+            e.Property(u => u.Name).HasColumnName("name");
+            e.Property(u => u.EmailVerified).HasColumnName("emailVerified");
+            e.Property(u => u.FirstName).HasColumnName("firstName").HasMaxLength(128);
+            e.Property(u => u.LastName).HasColumnName("lastName").HasMaxLength(128);
+            e.Property(u => u.FriendCode).HasColumnName("friendCode").IsRequired().HasMaxLength(32);
             e.HasIndex(u => u.FriendCode).IsUnique();
-            e.Property(u => u.Image).HasMaxLength(2048);
+            e.Property(u => u.Image).HasColumnName("image").HasMaxLength(2048);
+            e.Property(u => u.CreatedAt).HasColumnName("createdAt");
+            e.Property(u => u.UpdatedAt).HasColumnName("updatedAt");
+            e.Property(u => u.StripeCustomerId).HasColumnName("stripeCustomerId");
+            e.Property(u => u.IsPenaltyEnabled).HasColumnName("isPenaltyEnabled");
+            e.Property(u => u.PenaltyAmount).HasColumnName("penaltyAmount");
+        });
+
+        // auxiliary table mappings
+        modelBuilder.Entity<Session>(e =>
+        {
+            e.ToTable("session");
+            e.HasKey(s => s.Id);
+            e.Property(s => s.Id).HasColumnName("id");
+            e.Property(s => s.ExpiresAt).HasColumnName("expiresAt");
+            e.Property(s => s.Token).HasColumnName("token");
+            e.Property(s => s.CreatedAt).HasColumnName("createdAt");
+            e.Property(s => s.UpdatedAt).HasColumnName("updatedAt");
+            e.Property(s => s.IpAddress).HasColumnName("ipAddress");
+            e.Property(s => s.UserAgent).HasColumnName("userAgent");
+            e.Property(s => s.UserId).HasColumnName("userId");
+            e.HasOne(s => s.User).WithMany().HasForeignKey(s => s.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Account>(e =>
+        {
+            e.ToTable("account");
+            e.HasKey(a => a.Id);
+            e.Property(a => a.Id).HasColumnName("id");
+            e.Property(a => a.AccountId).HasColumnName("accountId");
+            e.Property(a => a.ProviderId).HasColumnName("providerId");
+            e.Property(a => a.UserId).HasColumnName("userId");
+            e.Property(a => a.AccessToken).HasColumnName("accessToken");
+            e.Property(a => a.RefreshToken).HasColumnName("refreshToken");
+            e.Property(a => a.IdToken).HasColumnName("idToken");
+            e.Property(a => a.AccessTokenExpiresAt).HasColumnName("accessTokenExpiresAt");
+            e.Property(a => a.RefreshTokenExpiresAt).HasColumnName("refreshTokenExpiresAt");
+            e.Property(a => a.Scope).HasColumnName("scope");
+            e.Property(a => a.Password).HasColumnName("password");
+            e.Property(a => a.CreatedAt).HasColumnName("createdAt");
+            e.Property(a => a.UpdatedAt).HasColumnName("updatedAt");
+            e.HasOne(a => a.User).WithMany().HasForeignKey(a => a.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Verification>(e =>
+        {
+            e.ToTable("verification");
+            e.HasKey(v => v.Id);
+            e.Property(v => v.Id).HasColumnName("id");
+            e.Property(v => v.Identifier).HasColumnName("identifier");
+            e.Property(v => v.Value).HasColumnName("value");
+            e.Property(v => v.ExpiresAt).HasColumnName("expiresAt");
+            e.Property(v => v.CreatedAt).HasColumnName("createdAt");
+            e.Property(v => v.UpdatedAt).HasColumnName("updatedAt");
+        });
+
+        modelBuilder.Entity<Jwks>(e =>
+        {
+            e.ToTable("jwks");
+            e.HasKey(j => j.Id);
+            e.Property(j => j.Id).HasColumnName("id");
+            e.Property(j => j.PublicKey).HasColumnName("publicKey");
+            e.Property(j => j.PrivateKey).HasColumnName("privateKey");
+            e.Property(j => j.CreatedAt).HasColumnName("createdAt");
         });
 
         modelBuilder.Entity<Group>(e =>

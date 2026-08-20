@@ -221,11 +221,14 @@ export default function TimelinePage() {
               return (
                 <EntryCard
                   key={entry.id}
+                  id={entry.id!}
                   author={isMe ? "a" : "b"}
                   authorName={isMe ? "You" : (entry.authorFirstName || "Someone")}
                   time={timeStr}
                   text={entry.textContent || ""}
                   media={entry.media || []}
+                  reactions={entry.reactions || []}
+                  currentUserId={me?.id || ""}
                 />
               );
             })}

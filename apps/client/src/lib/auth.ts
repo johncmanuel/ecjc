@@ -1,25 +1,34 @@
 import { betterAuth } from "better-auth";
 import { createAuthMiddleware } from "better-auth/api";
 import { bearer, jwt } from "better-auth/plugins";
-import { ApiClient } from "./api";
 import { loadEnvConfig } from "@next/env";
 import path from "path";
+import { Pool } from "pg";
+import { generateFriendCode } from "./utils";
 
 // load .env from root
 loadEnvConfig(path.resolve(process.cwd(), "../../"));
 
-const backendUrl =
-  process.env.NODE_ENV === "production"
-    ? (process.env.API_URL ?? "")
-    : "http://localhost:5186";
-
 export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
   secret: process.env.BETTER_AUTH_SECRET,
+  database: new Pool({
+    connectionString: process.env.DATABASE_URL ?? "postgresql://ecjc:ecjc@localhost:5432/ecjc"
+  }),
+  account: {
+    accountLinking: {
+      enabled: true,
+      trustedProviders: ["google"],
+    },
+  },
   user: {
     additionalFields: {
       firstName: { type: "string", required: false },
       lastName: { type: "string", required: false },
+      friendCode: { type: "string", required: false },
+      stripeCustomerId: { type: "string", required: false },
+      isPenaltyEnabled: { type: "boolean", required: false },
+      penaltyAmount: { type: "number", required: false },
     },
   },
   socialProviders: {
@@ -55,35 +64,15 @@ export const auth = betterAuth({
   databaseHooks: {
     user: {
       create: {
-        after: async (user) => {
-          const client = new ApiClient(backendUrl, { fetch: (...args) => fetch(...args) });
-          try {
-            await client.syncUser({
-              id: user.id,
-              email: user.email,
-              firstName: (user as any).firstName ?? undefined,
-              lastName: (user as any).lastName ?? undefined,
-              image: user.image ?? undefined,
-            });
-          } catch (error: any) {
-            console.error(`Failed to sync user to backend: ${error.message}`);
-          }
-        },
-      },
-      update: {
-        after: async (user) => {
-          const client = new ApiClient(backendUrl, { fetch: (...args) => fetch(...args) });
-          try {
-            await client.syncUser({
-              id: user.id,
-              email: user.email,
-              firstName: (user as any).firstName ?? undefined,
-              lastName: (user as any).lastName ?? undefined,
-              image: user.image ?? undefined,
-            });
-          } catch (error: any) {
-            console.error(`Failed to sync user to backend: ${error.message}`);
-          }
+        before: async (user) => {
+          return {
+            data: {
+              ...user,
+              friendCode: generateFriendCode(),
+              isPenaltyEnabled: false,
+              penaltyAmount: 0,
+            }
+          };
         },
       },
     },

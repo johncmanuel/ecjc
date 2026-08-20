@@ -3,10 +3,37 @@
 import { useState } from "react";
 import SettingsRow  from "@/components/streak/SettingsRow";
 import SignOutButton from "@/components/ui/SignOutButton";
+import AmountStepper from "@/components/payment/AmountStepper";
+import StripeSetup from "@/components/payment/StripeSetup";
+import { useApi } from "@/hooks/useApi";
 
 export default function SettingsPage() {
   const [reminder, setReminder] = useState(true);
-  const [moneyPledge, setMoneyPledge] = useState(true);
+  const [moneyPledge, setMoneyPledge] = useState(false);
+  const [penaltyAmount, setPenaltyAmount] = useState(5);
+  const api = useApi();
+
+  const handleTogglePledge = async (v: boolean) => {
+    setMoneyPledge(v);
+    try {
+      await api.postApiSettingsPenalty({ isPenaltyEnabled: v, penaltyAmount: penaltyAmount * 100 });
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleAmountChange = async (next: number) => {
+    const capped = Math.min(Math.max(5, next), 20);
+    setPenaltyAmount(capped);
+    
+    if (moneyPledge) {
+      try {
+        await api.postApiSettingsPenalty({ isPenaltyEnabled: moneyPledge, penaltyAmount: capped * 100 });
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  };
 
   return (
     <div>
@@ -26,8 +53,17 @@ export default function SettingsPage() {
           title="Send a few dollars"
           description="Optional, just for you"
           on={moneyPledge}
-          onToggle={() => setMoneyPledge((v) => !v)}
+          onToggle={() => handleTogglePledge(!moneyPledge)}
         />
+        
+        {moneyPledge && (
+          <div className="mt-4 px-1 pb-4 border-b border-line">
+            <p className="text-sm text-ink-soft mb-3">Choose penalty amount (Max $20)</p>
+            <AmountStepper amount={penaltyAmount} onChange={handleAmountChange} step={1} />
+            
+            <StripeSetup />
+          </div>
+        )}
         
         <div className="mt-8 px-1">
           <SignOutButton />

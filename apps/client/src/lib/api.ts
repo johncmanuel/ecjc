@@ -9,8 +9,6 @@
 
 export interface IApiClient {
 
-    syncUser(request: UserSyncRequest, signal?: AbortSignal): Promise<UserSyncResponse>;
-
     getMe(signal?: AbortSignal): Promise<UserProfileResponse>;
 
     getByCode(code: string, signal?: AbortSignal): Promise<UserPublicProfileResponse>;
@@ -52,6 +50,18 @@ export interface IApiClient {
     declineInvite(id: string, signal?: AbortSignal): Promise<void>;
 
     cancelInvite(id: string, signal?: AbortSignal): Promise<void>;
+
+    /**
+     * CreateSetupIntent
+     */
+    postApiStripeSetupIntent(signal?: AbortSignal): Promise<SetupIntentResponse>;
+
+    postApiStripeWebhook(signal?: AbortSignal): Promise<void>;
+
+    /**
+     * UpdatePenaltySettings
+     */
+    postApiSettingsPenalty(req: UpdatePenaltyRequest, signal?: AbortSignal): Promise<void>;
 }
 
 export class ApiClient implements IApiClient {
@@ -62,50 +72,6 @@ export class ApiClient implements IApiClient {
     constructor(baseUrl?: string, http?: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> }) {
         this.http = http ? http : window as any;
         this.baseUrl = baseUrl ?? "";
-    }
-
-    syncUser(request: UserSyncRequest, signal?: AbortSignal): Promise<UserSyncResponse> {
-        let url_ = this.baseUrl + "/api/users/sync";
-        url_ = url_.replace(/[?&]$/, "");
-
-        const content_ = JSON.stringify(request);
-
-        let options_: RequestInit = {
-            body: content_,
-            method: "POST",
-            signal,
-            headers: {
-                "Content-Type": "application/json",
-                "Accept": "application/json"
-            }
-        };
-
-        return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processSyncUser(_response);
-        });
-    }
-
-    protected processSyncUser(response: Response): Promise<UserSyncResponse> {
-        const status = response.status;
-        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
-        if (status === 200) {
-            return response.text().then((_responseText) => {
-            let result200: any = null;
-            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as UserSyncResponse;
-            return result200;
-            });
-        } else if (status === 400) {
-            return response.text().then((_responseText) => {
-            let result400: any = null;
-            result400 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as ErrorResponse;
-            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
-            });
-        } else if (status !== 200 && status !== 204) {
-            return response.text().then((_responseText) => {
-            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
-            });
-        }
-        return Promise.resolve<UserSyncResponse>(null as any);
     }
 
     getMe(signal?: AbortSignal): Promise<UserProfileResponse> {
@@ -1039,23 +1005,120 @@ export class ApiClient implements IApiClient {
         }
         return Promise.resolve<void>(null as any);
     }
-}
 
-export interface UserSyncResponse {
-    synced?: boolean;
-    email?: string;
-}
+    /**
+     * CreateSetupIntent
+     */
+    postApiStripeSetupIntent(signal?: AbortSignal): Promise<SetupIntentResponse> {
+        let url_ = this.baseUrl + "/api/stripe/setup-intent";
+        url_ = url_.replace(/[?&]$/, "");
 
-export interface ErrorResponse {
-    error?: string;
-}
+        let options_: RequestInit = {
+            method: "POST",
+            signal,
+            headers: {
+                "Accept": "application/json"
+            }
+        };
 
-export interface UserSyncRequest {
-    id?: string;
-    email?: string;
-    firstName?: string | undefined;
-    lastName?: string | undefined;
-    image?: string | undefined;
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processPostApiStripeSetupIntent(_response);
+        });
+    }
+
+    protected processPostApiStripeSetupIntent(response: Response): Promise<SetupIntentResponse> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as SetupIntentResponse;
+            return result200;
+            });
+        } else if (status === 404) {
+            return response.text().then((_responseText) => {
+            return throwException("A server side error occurred.", status, _responseText, _headers);
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<SetupIntentResponse>(null as any);
+    }
+
+    postApiStripeWebhook(signal?: AbortSignal): Promise<void> {
+        let url_ = this.baseUrl + "/api/stripe/webhook";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "POST",
+            signal,
+            headers: {
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processPostApiStripeWebhook(_response);
+        });
+    }
+
+    protected processPostApiStripeWebhook(response: Response): Promise<void> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            return;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<void>(null as any);
+    }
+
+    /**
+     * UpdatePenaltySettings
+     */
+    postApiSettingsPenalty(req: UpdatePenaltyRequest, signal?: AbortSignal): Promise<void> {
+        let url_ = this.baseUrl + "/api/settings/penalty";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(req);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "POST",
+            signal,
+            headers: {
+                "Content-Type": "application/json",
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processPostApiSettingsPenalty(_response);
+        });
+    }
+
+    protected processPostApiSettingsPenalty(response: Response): Promise<void> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            return;
+            });
+        } else if (status === 404) {
+            return response.text().then((_responseText) => {
+            return throwException("A server side error occurred.", status, _responseText, _headers);
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<void>(null as any);
+    }
 }
 
 export interface UserProfileResponse {
@@ -1066,6 +1129,10 @@ export interface UserProfileResponse {
     friendCode?: string;
     image?: string | undefined;
     createdAt?: Date;
+}
+
+export interface ErrorResponse {
+    error?: string;
 }
 
 export interface UserPublicProfileResponse {
@@ -1172,6 +1239,15 @@ export interface SentInviteResponse {
 
 export interface AcceptInviteResponse {
     groupId?: string;
+}
+
+export interface SetupIntentResponse {
+    clientSecret?: string;
+}
+
+export interface UpdatePenaltyRequest {
+    isPenaltyEnabled?: boolean;
+    penaltyAmountCents?: number;
 }
 
 export interface FileParameter {

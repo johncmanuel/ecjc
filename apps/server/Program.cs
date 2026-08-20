@@ -34,6 +34,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 builder.Services.AddSingleton<IStorageService, LocalStorageService>();
 builder.Services.AddSingleton<CentrifugoService>();
+builder.Services.AddSingleton<StripeService>();
 builder.Services.AddSingleton(TimeProvider.System);
 
 var betterAuthUrl = builder.Configuration["Auth:BaseUrl"]
@@ -74,6 +75,13 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
+// auto migrate database on startup
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    await db.Database.MigrateAsync();
+}
+
 app.UseCors("DevCorsPolicy");
 app.UseAuthentication();
 app.UseAuthorization();
@@ -88,6 +96,8 @@ app.RegisterEntryEndpoints();
 app.RegisterReactionEndpoints();
 app.RegisterMediaEndpoints();
 app.RegisterInviteEndpoints();
+app.RegisterStripeEndpoints();
+app.RegisterSettingsEndpoints();
 
 app.Run();
 public partial class Program { }
