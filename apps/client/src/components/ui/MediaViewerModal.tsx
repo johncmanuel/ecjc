@@ -8,23 +8,25 @@ type MediaViewerModalProps = {
   onClose: () => void;
 };
 
+const AUTOPLAY_STORAGE_KEY = "ecjc_autoplay";
+
 export default function MediaViewerModal({ media, initialIndex, onClose }: MediaViewerModalProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   
-  // Local storage for autoplay preference
+  // persist autoplay preference in localStorage 
   const [autoplayEnabled, setAutoplayEnabled] = useState(() => {
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("ecjc_autoplay");
+      const saved = localStorage.getItem(AUTOPLAY_STORAGE_KEY);
       if (saved !== null) return saved === "true";
     }
-    return true; // default
+    return true; 
   });
 
   const toggleAutoplay = () => {
     const nextState = !autoplayEnabled;
     setAutoplayEnabled(nextState);
     if (typeof window !== "undefined") {
-      localStorage.setItem("ecjc_autoplay", String(nextState));
+      localStorage.setItem(AUTOPLAY_STORAGE_KEY, String(nextState));
     }
   };
 
@@ -60,7 +62,6 @@ export default function MediaViewerModal({ media, initialIndex, onClose }: Media
 
   return (
     <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center select-none touch-none">
-      {/* Top Bar */}
       <div className="absolute top-0 inset-x-0 p-4 flex items-center justify-between z-10 bg-gradient-to-b from-black/60 to-transparent">
         <button
           onClick={toggleAutoplay}
@@ -79,7 +80,6 @@ export default function MediaViewerModal({ media, initialIndex, onClose }: Media
         </button>
       </div>
 
-      {/* Main Content Area */}
       <div className="w-full h-full flex items-center justify-center relative">
         {isVideo ? (
           <video
@@ -101,7 +101,6 @@ export default function MediaViewerModal({ media, initialIndex, onClose }: Media
           />
         )}
 
-        {/* Clickable Navigation Zones */}
         {media.length > 1 && (
           <>
             <div
@@ -125,7 +124,6 @@ export default function MediaViewerModal({ media, initialIndex, onClose }: Media
         )}
       </div>
       
-      {/* Indicator */}
       {media.length > 1 && (
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-10 bg-black/40 px-3 py-1.5 rounded-full backdrop-blur-md">
           {media.map((_, idx) => (
