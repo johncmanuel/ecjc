@@ -9,12 +9,12 @@ const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY 
 
 function SetupForm() {
   const stripe = useStripe();
-  const elements = useElements();
   const [error, setError] = useState<string | null>(null);
+  const elements = useElements();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit: React.SubmitEventHandler<HTMLFormElement> = async (e) => {
     e.preventDefault();
     if (!stripe || !elements) return;
 
@@ -39,6 +39,7 @@ function SetupForm() {
     return <div className="p-4 text-green-600 bg-green-50 rounded-lg text-sm">Payment method saved successfully!</div>;
   }
 
+  // TODO: could make this a modal instead
   return (
     <form onSubmit={handleSubmit} className="mt-4 space-y-4">
       <PaymentElement />
@@ -58,10 +59,6 @@ export default function StripeSetup() {
   const api = useApi();
 
   useEffect(() => {
-    // Generate a setup intent on the backend
-    // Since we don't have an SDK generated yet for it, we can fetch it manually or regenerate the SDK.
-    // Wait, the plan says to regenerate the SDK. Let's do that first.
-    // Actually, I can just use fetch with the JWT token.
     api.postApiStripeSetupIntent()
       .then(data => setClientSecret(data?.clientSecret || null))
       .catch(console.error);
