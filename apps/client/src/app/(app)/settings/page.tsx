@@ -16,7 +16,7 @@ export default function SettingsPage() {
   const handleTogglePledge = async (v: boolean) => {
     setMoneyPledge(v);
     try {
-      await api.postApiSettingsPenalty({ isPenaltyEnabled: v, penaltyAmount: penaltyAmount * 100 });
+      await api.postApiSettingsPenalty({ isPenaltyEnabled: v, penaltyAmountCents: penaltyAmount * 100 });
     } catch (e) {
       console.error(e);
     }
@@ -28,7 +28,7 @@ export default function SettingsPage() {
     
     if (moneyPledge) {
       try {
-        await api.postApiSettingsPenalty({ isPenaltyEnabled: moneyPledge, penaltyAmount: capped * 100 });
+        await api.postApiSettingsPenalty({ isPenaltyEnabled: moneyPledge, penaltyAmountCents: capped * 100 });
       } catch (e) {
         console.error(e);
       }
