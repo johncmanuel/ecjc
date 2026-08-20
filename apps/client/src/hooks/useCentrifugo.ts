@@ -72,6 +72,8 @@ export function useCentrifugo(onEvent?: EventHandler) {
     sub.subscribe();
     centrifuge.connect();
 
+    console.log(`Connected to Centrifugo channel`);
+
     centrifugeRef.current = centrifuge;
     subRef.current = sub;
   }, []);
