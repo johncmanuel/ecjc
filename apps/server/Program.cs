@@ -7,6 +7,14 @@ using server.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Load .env from workspace root for local development
+var envPath = Path.Combine(builder.Environment.ContentRootPath, "../../.env");
+if (File.Exists(envPath))
+{
+    DotNetEnv.Env.Load(envPath);
+    builder.Configuration.AddEnvironmentVariables();
+}
+
 builder.Services.AddHealthChecks();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApiDocument(config =>
