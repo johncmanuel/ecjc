@@ -97,6 +97,12 @@ export default function ComposePage() {
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+              e.preventDefault();
+              handlePost();
+            }
+          }}
           placeholder="What's today like?"
           disabled={isSubmitting}
           className="font-serif text-[15px] leading-relaxed text-ink placeholder:italic placeholder:text-ink-faint resize-none flex-1 bg-transparent outline-none"
