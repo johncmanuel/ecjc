@@ -6,7 +6,7 @@ namespace server.Services;
 // Lightweight wrapper around HttpClient to publish real-time events to Centrifugo's HTTP API.
 public class CentrifugoService(IConfiguration configuration, ILogger<CentrifugoService> logger)
 {
-    private readonly HttpClient _httpClient = new HttpClient();
+    private readonly HttpClient _httpClient = new();
     private readonly string _apiKey = configuration["Centrifugo:ApiKey"]
             ?? Environment.GetEnvironmentVariable("CENTRIFUGO_HTTP_API_KEY")
             ?? "centrifugo-dev-api-key";
@@ -21,8 +21,7 @@ public class CentrifugoService(IConfiguration configuration, ILogger<CentrifugoS
         var channel = $"user:{userId}";
         await PublishAsync(channel, data);
     }
-
-    private async Task PublishAsync(string channel, object data)
+    public async Task PublishAsync(string channel, object data)
     {
         try
         {

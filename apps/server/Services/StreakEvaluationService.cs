@@ -10,24 +10,16 @@ public interface IStreakEvaluationService
     Task EvaluateDailyStreaksAsync(DateTime dateToEvaluate, CancellationToken cancellationToken = default);
 }
 
-public class StreakEvaluationService : IStreakEvaluationService
+public class StreakEvaluationService(
+    ApplicationDbContext db,
+    IStripeService stripeService,
+    CentrifugoService centrifugoService,
+    ILogger<StreakEvaluationService> logger) : IStreakEvaluationService
 {                            
-    private readonly ApplicationDbContext _db;
-    private readonly IStripeService _stripeService;
-    private readonly CentrifugoService _centrifugoService;
-    private readonly ILogger<StreakEvaluationService> _logger;
-
-    public StreakEvaluationService(
-        ApplicationDbContext db, 
-        IStripeService stripeService, 
-        CentrifugoService centrifugoService,
-        ILogger<StreakEvaluationService> logger)
-    {
-        _db = db;
-        _stripeService = stripeService;
-        _centrifugoService = centrifugoService;
-        _logger = logger;
-    }
+    private readonly ApplicationDbContext _db = db;
+    private readonly IStripeService _stripeService = stripeService;
+    private readonly CentrifugoService _centrifugoService = centrifugoService;
+    private readonly ILogger<StreakEvaluationService> _logger = logger;
 
     public async Task EvaluateDailyStreaksAsync(DateTime dateToEvaluate, CancellationToken cancellationToken = default)
     {
