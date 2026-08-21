@@ -48,7 +48,7 @@ public class StreakEvaluationTests
         var logger = NullLogger<StreakEvaluationService>.Instance;
         // Mock centrifugo service simply using null config, wait it might throw if not initialized
         // Better to skip Centrifugo or just pass null if it accepts it. Let's look at CentrifugoService constructor.
-        var centrifugo = new CentrifugoService(new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build());
+        var centrifugo = new CentrifugoService(new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build(), NullLogger<CentrifugoService>.Instance);
         var evaluator = new StreakEvaluationService(db, stripeMock, centrifugo, logger);
 
         var groupId = Guid.NewGuid();
@@ -81,7 +81,7 @@ public class StreakEvaluationTests
         var db = GetInMemoryDbContext();
         var stripeMock = new MockStripeService();
         var logger = NullLogger<StreakEvaluationService>.Instance;
-        var centrifugo = new CentrifugoService(new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build());
+        var centrifugo = new CentrifugoService(new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build(), NullLogger<CentrifugoService>.Instance);
         var evaluator = new StreakEvaluationService(db, stripeMock, centrifugo, logger);
 
         var groupId = Guid.NewGuid();
@@ -116,7 +116,7 @@ public class StreakEvaluationTests
         var db = GetInMemoryDbContext();
         var stripeMock = new MockStripeService();
         var logger = NullLogger<StreakEvaluationService>.Instance;
-        var centrifugo = new CentrifugoService(new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build());
+        var centrifugo = new CentrifugoService(new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build(), NullLogger<CentrifugoService>.Instance);
         var evaluator = new StreakEvaluationService(db, stripeMock, centrifugo, logger);
 
         var groupId = Guid.NewGuid();
