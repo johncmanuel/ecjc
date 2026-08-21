@@ -3,36 +3,32 @@
 import { useState } from "react";
 import SettingsRow  from "@/components/streak/SettingsRow";
 import SignOutButton from "@/components/ui/SignOutButton";
-import AmountStepper from "@/components/payment/AmountStepper";
-import StripeSetup from "@/components/payment/StripeSetup";
+import PaymentModal from "@/components/payment/PaymentModal";
 import { useApi } from "@/hooks/useApi";
 
 export default function SettingsPage() {
-  const [reminder, setReminder] = useState(true);
   const [moneyPledge, setMoneyPledge] = useState(false);
   const [penaltyAmount, setPenaltyAmount] = useState(5);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const api = useApi();
 
   const handleTogglePledge = async (v: boolean) => {
-    setMoneyPledge(v);
-    try {
-      await api.postApiSettingsPenalty({ isPenaltyEnabled: v, penaltyAmountCents: penaltyAmount * 100 });
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleAmountChange = async (next: number) => {
-    const capped = Math.min(Math.max(5, next), 20);
-    setPenaltyAmount(capped);
-    
-    if (moneyPledge) {
+    if (v) {
+      setIsPaymentModalOpen(true);
+    } else {
+      setMoneyPledge(false);
       try {
-        await api.postApiSettingsPenalty({ isPenaltyEnabled: moneyPledge, penaltyAmountCents: capped * 100 });
+        await api.postApiSettingsPenalty({ isPenaltyEnabled: false, penaltyAmountCents: penaltyAmount * 100 });
       } catch (e) {
         console.error(e);
       }
     }
+  };
+
+  const handlePaymentSuccess = (amount: number) => {
+    setPenaltyAmount(amount);
+    setMoneyPledge(true);
+    setIsPaymentModalOpen(false);
   };
 
   return (
@@ -43,25 +39,21 @@ export default function SettingsPage() {
         <div className="text-[11px] uppercase tracking-wider text-ink-faint font-medium mb-2 px-1">
           If a day is missed
         </div>
-        <SettingsRow
-          title="Gentle reminder"
-          description="A nudge, nothing loud"
-          on={reminder}
-          onToggle={() => setReminder((v) => !v)}
-        />
-        <SettingsRow
+       <SettingsRow
           title="Send a few dollars"
-          description="Optional, just for you"
+          description={moneyPledge ? `Current penalty: $${penaltyAmount}` : "Optional, just for you"}
           on={moneyPledge}
           onToggle={() => handleTogglePledge(!moneyPledge)}
         />
         
         {moneyPledge && (
-          <div className="mt-4 px-1 pb-4 border-b border-line">
-            <p className="text-sm text-ink-soft mb-3">Choose penalty amount (Max $20)</p>
-            <AmountStepper amount={penaltyAmount} onChange={handleAmountChange} step={1} />
-            
-            <StripeSetup />
+          <div className="px-1 mt-2 mb-4">
+            <button 
+              onClick={() => setIsPaymentModalOpen(true)}
+              className="text-sm font-medium text-ink hover:text-ink-soft transition-colors px-3 py-1.5 rounded-md bg-card border border-line"
+            >
+              Configure Penalty Settings
+            </button>
           </div>
         )}
         
@@ -69,6 +61,13 @@ export default function SettingsPage() {
           <SignOutButton />
         </div>
       </div>
+
+      <PaymentModal 
+        isOpen={isPaymentModalOpen} 
+        onClose={() => setIsPaymentModalOpen(false)} 
+        initialAmount={penaltyAmount}
+        onSuccess={handlePaymentSuccess}
+      />
     </div>
   );
 }

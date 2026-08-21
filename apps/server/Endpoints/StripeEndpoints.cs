@@ -31,7 +31,7 @@ public static class StripeEndpoints
     [OpenApiOperation("CreateSetupIntent", "Creates a SetupIntent to save a card")]
     private static async Task<Microsoft.AspNetCore.Http.HttpResults.Results<Microsoft.AspNetCore.Http.HttpResults.Ok<SetupIntentResponse>, Microsoft.AspNetCore.Http.HttpResults.UnauthorizedHttpResult, Microsoft.AspNetCore.Http.HttpResults.NotFound>> CreateSetupIntent(
         ApplicationDbContext db,
-        StripeService stripeService,
+        IStripeService stripeService,
         ClaimsPrincipal userClaims)
     {
         var userId = userClaims.FindFirstValue(ClaimTypes.NameIdentifier);

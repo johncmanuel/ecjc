@@ -42,8 +42,11 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 builder.Services.AddSingleton<IStorageService, LocalStorageService>();
 builder.Services.AddSingleton<CentrifugoService>();
-builder.Services.AddSingleton<StripeService>();
+builder.Services.AddSingleton<IStripeService, StripeService>();
 builder.Services.AddSingleton(TimeProvider.System);
+
+builder.Services.AddScoped<IStreakEvaluationService, StreakEvaluationService>();
+builder.Services.AddHostedService<StreakMonitorBackgroundService>();
 
 var betterAuthUrl = builder.Configuration["Auth:BaseUrl"]
 	?? Environment.GetEnvironmentVariable("BETTER_AUTH_URL")

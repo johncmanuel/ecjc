@@ -3,7 +3,7 @@ namespace server.Services;
 using Stripe;
 using server.Data.Models;
 
-public class StripeService
+public class StripeService : IStripeService
 {
     private readonly IConfiguration _config;
     private readonly CustomerService _customerService;

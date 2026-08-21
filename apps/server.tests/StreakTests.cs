@@ -1,162 +1,148 @@
-using System.Net.Http.Json;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using server.Data;
 using server.Data.Models;
-using server.Endpoints;
+using server.Services;
+using Stripe;
 
 namespace server.tests;
 
-public class StreakTests(CustomWebApplicationFactory factory) : IClassFixture<CustomWebApplicationFactory>
+public class MockStripeService : IStripeService
 {
-    private readonly CustomWebApplicationFactory _factory = factory;
+    public List<(string CustomerId, int AmountCents)> Charges = new();
 
-    private async Task<(HttpClient Client, Guid GroupId)> SetupTestGroupAsync()
+    public Task<PaymentIntent> ChargeCustomerAsync(string customerId, int amountCents, string description = "Penalty")
     {
-        var client = _factory.CreateClient();
-        
-        using var scope = _factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        Charges.Add((customerId, amountCents));
+        return Task.FromResult(new PaymentIntent());
+    }
 
-        db.Database.EnsureDeleted();
-        db.Database.EnsureCreated();
+    public Task<SetupIntent> CreateSetupIntentAsync(string customerId)
+    {
+        return Task.FromResult(new SetupIntent());
+    }
+
+    public Task<string> GetOrCreateCustomerAsync(User user)
+    {
+        return Task.FromResult("cus_mock");
+    }
+}
+
+public class StreakEvaluationTests
+{
+    private ApplicationDbContext GetInMemoryDbContext()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+
+        return new ApplicationDbContext(options);
+    }
+
+    [Fact]
+    public async Task EvaluateDailyStreaks_BothUsersPosted_IncrementsStreak()
+    {
+        var db = GetInMemoryDbContext();
+        var stripeMock = new MockStripeService();
+        var logger = NullLogger<StreakEvaluationService>.Instance;
+        // Mock centrifugo service simply using null config, wait it might throw if not initialized
+        // Better to skip Centrifugo or just pass null if it accepts it. Let's look at CentrifugoService constructor.
+        var centrifugo = new CentrifugoService(new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build());
+        var evaluator = new StreakEvaluationService(db, stripeMock, centrifugo, logger);
 
         var groupId = Guid.NewGuid();
-        var partnerId = "partner-user-id";
+        var user1Id = "user1";
+        var user2Id = "user2";
 
-        db.Users.Add(new User { Id = TestAuthHandler.DefaultUserId, Email = "test@test.com", FriendCode = "11111" });
-        db.Users.Add(new User { Id = partnerId, Email = "partner@test.com", FriendCode = "22222" });
-
-        var group = new Group { Id = groupId };
+        var group = new Group { Id = groupId, StreakCount = 1 };
         db.Groups.Add(group);
+        db.Users.Add(new User { Id = user1Id, Email = "1@test.com", FriendCode = "1" });
+        db.Users.Add(new User { Id = user2Id, Email = "2@test.com", FriendCode = "2" });
+        db.GroupUsers.Add(new GroupUser { GroupId = groupId, UserId = user1Id });
+        db.GroupUsers.Add(new GroupUser { GroupId = groupId, UserId = user2Id });
 
-        db.GroupUsers.Add(new GroupUser { GroupId = groupId, UserId = TestAuthHandler.DefaultUserId });
-        db.GroupUsers.Add(new GroupUser { GroupId = groupId, UserId = partnerId });
-
+        var targetDate = new DateTime(2023, 10, 10, 0, 0, 0, DateTimeKind.Utc);
+        
+        db.Entries.Add(new Entry { GroupId = groupId, AuthorId = user1Id, TextContent = "a", CreatedAt = targetDate.AddHours(5) });
+        db.Entries.Add(new Entry { GroupId = groupId, AuthorId = user2Id, TextContent = "b", CreatedAt = targetDate.AddHours(10) });
         await db.SaveChangesAsync();
 
-        return (client, groupId);
+        await evaluator.EvaluateDailyStreaksAsync(targetDate);
+
+        var updatedGroup = await db.Groups.FindAsync(groupId);
+        Assert.Equal(2, updatedGroup!.StreakCount);
+        Assert.Empty(stripeMock.Charges);
     }
 
     [Fact]
-    public async Task CreateEntry_FirstPost_SetsStreakToOne()
+    public async Task EvaluateDailyStreaks_OneUserMissed_BreaksStreakAndChargesSlacker()
     {
-        var (client, groupId) = await SetupTestGroupAsync();
+        var db = GetInMemoryDbContext();
+        var stripeMock = new MockStripeService();
+        var logger = NullLogger<StreakEvaluationService>.Instance;
+        var centrifugo = new CentrifugoService(new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build());
+        var evaluator = new StreakEvaluationService(db, stripeMock, centrifugo, logger);
+
+        var groupId = Guid.NewGuid();
+        var user1Id = "user1";
+        var user2Id = "user2";
+
+        var group = new Group { Id = groupId, StreakCount = 5 };
+        db.Groups.Add(group);
+        db.Users.Add(new User { Id = user1Id, Email = "1@test.com", FriendCode = "1", IsPenaltyEnabled = true, StripeCustomerId = "cus_1", PenaltyAmount = 500 });
+        db.Users.Add(new User { Id = user2Id, Email = "2@test.com", FriendCode = "2", IsPenaltyEnabled = true, StripeCustomerId = "cus_2", PenaltyAmount = 500 });
+        db.GroupUsers.Add(new GroupUser { GroupId = groupId, UserId = user1Id });
+        db.GroupUsers.Add(new GroupUser { GroupId = groupId, UserId = user2Id });
+
+        var targetDate = new DateTime(2023, 10, 10, 0, 0, 0, DateTimeKind.Utc);
         
-        // Reset TimeProvider to a fixed date
-        var current = _factory.TimeProvider.GetUtcNow();
-        var nextCleanDay = new DateTimeOffset(current.Year, current.Month, current.Day, 12, 0, 0, TimeSpan.Zero).AddDays(1);
-        _factory.TimeProvider.SetUtcNow(nextCleanDay);
+        // Only User1 posted
+        db.Entries.Add(new Entry { GroupId = groupId, AuthorId = user1Id, TextContent = "a", CreatedAt = targetDate.AddHours(5) });
+        await db.SaveChangesAsync();
 
-        var request = new EntryEndpoints.CreateEntryRequest("This is a valid test entry with more than ten words here to pass validation.");
-        var response = await client.PostAsJsonAsync($"/api/groups/{groupId}/entries", request);
+        await evaluator.EvaluateDailyStreaksAsync(targetDate);
+
+        var updatedGroup = await db.Groups.FindAsync(groupId);
+        Assert.Equal(0, updatedGroup!.StreakCount); // Streak broken
         
-        response.EnsureSuccessStatusCode();
-
-        using var scope = _factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var group = await db.Groups.FindAsync(groupId);
-
-        Assert.NotNull(group);
-        Assert.Equal(1, group.StreakCount);
+        Assert.Single(stripeMock.Charges);
+        Assert.Equal("cus_2", stripeMock.Charges[0].CustomerId); // User 2 is charged
     }
 
     [Fact]
-    public async Task CreateEntry_SameDayPost_KeepsStreakAtOne()
+    public async Task EvaluateDailyStreaks_BothUsersMissed_BreaksStreakAndChargesBoth()
     {
-        var (client, groupId) = await SetupTestGroupAsync();
+        var db = GetInMemoryDbContext();
+        var stripeMock = new MockStripeService();
+        var logger = NullLogger<StreakEvaluationService>.Instance;
+        var centrifugo = new CentrifugoService(new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build());
+        var evaluator = new StreakEvaluationService(db, stripeMock, centrifugo, logger);
+
+        var groupId = Guid.NewGuid();
+        var user1Id = "user1";
+        var user2Id = "user2";
+
+        var group = new Group { Id = groupId, StreakCount = 10 };
+        db.Groups.Add(group);
+        db.Users.Add(new User { Id = user1Id, Email = "1@test.com", FriendCode = "1", IsPenaltyEnabled = true, StripeCustomerId = "cus_1", PenaltyAmount = 500 });
+        db.Users.Add(new User { Id = user2Id, Email = "2@test.com", FriendCode = "2", IsPenaltyEnabled = true, StripeCustomerId = "cus_2", PenaltyAmount = 500 });
+        db.GroupUsers.Add(new GroupUser { GroupId = groupId, UserId = user1Id });
+        db.GroupUsers.Add(new GroupUser { GroupId = groupId, UserId = user2Id });
+
+        var targetDate = new DateTime(2023, 10, 10, 0, 0, 0, DateTimeKind.Utc);
         
-        var current = _factory.TimeProvider.GetUtcNow();
-        var nextCleanDay = new DateTimeOffset(current.Year, current.Month, current.Day, 12, 0, 0, TimeSpan.Zero).AddDays(1);
-        _factory.TimeProvider.SetUtcNow(nextCleanDay);
-        var request = new EntryEndpoints.CreateEntryRequest("This is a valid test entry with more than ten words here to pass validation.");
+        // Neither posted on targetDate
+        db.Entries.Add(new Entry { GroupId = groupId, AuthorId = user1Id, TextContent = "a", CreatedAt = targetDate.AddDays(-1) });
+        await db.SaveChangesAsync();
+
+        await evaluator.EvaluateDailyStreaksAsync(targetDate);
+
+        var updatedGroup = await db.Groups.FindAsync(groupId);
+        Assert.Equal(0, updatedGroup!.StreakCount); // Streak broken
         
-        var response1 = await client.PostAsJsonAsync($"/api/groups/{groupId}/entries", request);
-        response1.EnsureSuccessStatusCode();
-
-        // Advance time by a few hours, still same UTC day
-        _factory.TimeProvider.Advance(TimeSpan.FromHours(5));
-
-        var response2 = await client.PostAsJsonAsync($"/api/groups/{groupId}/entries", request);
-        response2.EnsureSuccessStatusCode();
-
-        using var scope = _factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var group = await db.Groups.FindAsync(groupId);
-
-        Assert.NotNull(group);
-        Assert.Equal(1, group.StreakCount);
-    }
-
-    [Fact]
-    public async Task CreateEntry_NextDayPost_IncrementsStreak()
-    {
-        var (client, groupId) = await SetupTestGroupAsync();
-        
-        var current = _factory.TimeProvider.GetUtcNow();
-        var nextCleanDay = new DateTimeOffset(current.Year, current.Month, current.Day, 12, 0, 0, TimeSpan.Zero).AddDays(1);
-        _factory.TimeProvider.SetUtcNow(nextCleanDay);
-        var request = new EntryEndpoints.CreateEntryRequest("This is a valid test entry with more than ten words here to pass validation.");
-        
-        // Day 1
-        var response1 = await client.PostAsJsonAsync($"/api/groups/{groupId}/entries", request);
-        response1.EnsureSuccessStatusCode();
-
-        // Advance to Day 2
-        _factory.TimeProvider.Advance(TimeSpan.FromDays(1));
-
-        // Day 2
-        var response2 = await client.PostAsJsonAsync($"/api/groups/{groupId}/entries", request);
-        response2.EnsureSuccessStatusCode();
-
-        using var scope = _factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var group = await db.Groups.FindAsync(groupId);
-
-        Assert.NotNull(group);
-        Assert.Equal(2, group.StreakCount);
-    }
-
-    [Fact]
-    public async Task CreateEntry_MissedDayPost_ResetsStreakToOne()
-    {
-        var (client, groupId) = await SetupTestGroupAsync();
-        
-        var current = _factory.TimeProvider.GetUtcNow();
-        var nextCleanDay = new DateTimeOffset(current.Year, current.Month, current.Day, 12, 0, 0, TimeSpan.Zero).AddDays(1);
-        _factory.TimeProvider.SetUtcNow(nextCleanDay);
-        var request = new EntryEndpoints.CreateEntryRequest("This is a valid test entry with more than ten words here to pass validation.");
-        
-        // Day 1
-        var response1 = await client.PostAsJsonAsync($"/api/groups/{groupId}/entries", request);
-        response1.EnsureSuccessStatusCode();
-
-        // Advance to Day 2
-        _factory.TimeProvider.Advance(TimeSpan.FromDays(1));
-        var response2 = await client.PostAsJsonAsync($"/api/groups/{groupId}/entries", request);
-        response2.EnsureSuccessStatusCode();
-        
-        // Assert streak is 2
-        using (var scope1 = _factory.Services.CreateScope())
-        {
-            var db1 = scope1.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var group1 = await db1.Groups.FindAsync(groupId);
-            Assert.Equal(2, group1?.StreakCount);
-        }
-
-        // Advance to Day 4 (Missed Day 3)
-        _factory.TimeProvider.Advance(TimeSpan.FromDays(2));
-
-        // Day 4
-        var response3 = await client.PostAsJsonAsync($"/api/groups/{groupId}/entries", request);
-        response3.EnsureSuccessStatusCode();
-
-        using (var scope2 = _factory.Services.CreateScope())
-        {
-            var db2 = scope2.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var group2 = await db2.Groups.FindAsync(groupId);
-
-            Assert.NotNull(group2);
-            Assert.Equal(1, group2.StreakCount);
-        }
+        Assert.Equal(2, stripeMock.Charges.Count);
+        Assert.Contains(stripeMock.Charges, c => c.CustomerId == "cus_1");
+        Assert.Contains(stripeMock.Charges, c => c.CustomerId == "cus_2");
     }
 }
