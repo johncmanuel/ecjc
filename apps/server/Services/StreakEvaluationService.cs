@@ -13,12 +13,10 @@ public interface IStreakEvaluationService
 public class StreakEvaluationService(
     ApplicationDbContext db,
     IStripeService stripeService,
-    CentrifugoService centrifugoService,
     ILogger<StreakEvaluationService> logger) : IStreakEvaluationService
 {                            
     private readonly ApplicationDbContext _db = db;
     private readonly IStripeService _stripeService = stripeService;
-    private readonly CentrifugoService _centrifugoService = centrifugoService;
     private readonly ILogger<StreakEvaluationService> _logger = logger;
 
     public async Task EvaluateDailyStreaksAsync(DateTime dateToEvaluate, CancellationToken cancellationToken = default)
@@ -75,15 +73,21 @@ public class StreakEvaluationService(
                     {
                         try
                         {
+                            // send off-session charge to Stripe for the penalty amount
+                            // if stripe webhook returns a successful charge, we can log it and notify the user with centrifugo
+                            var metadata = new Dictionary<string, string>
+                            {
+                                { "GroupId", group.Id.ToString() },
+                                { "Date", targetDate.ToString("yyyy-MM-dd") }
+                            };
+
                             await _stripeService.ChargeCustomerAsync(
                                 slacker.StripeCustomerId, 
                                 slacker.PenaltyAmount, 
-                                $"Penalty for broken streak in group {group.Id}");
+                                $"Penalty for broken streak in group {group.Id}",
+                                metadata);
                                 
-                            _logger.LogInformation("Charged {Email} penalty of {Amount} cents.", slacker.Email, slacker.PenaltyAmount);
-                            
-                            var notificationPayload = new { type = "penalty_charged", amount = slacker.PenaltyAmount };
-                            await _centrifugoService.PublishAsync($"user#{slacker.Id}", notificationPayload);
+                            _logger.LogInformation("Requested off-session charge for {Email} for {Amount} cents.", slacker.Email, slacker.PenaltyAmount);
                         }
                         catch (Exception ex)
                         {

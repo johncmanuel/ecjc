@@ -203,13 +203,17 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         {
             if (entry.State == EntityState.Added)
             {
-                if (entry.Entity is User u) { u.CreatedAt = now; u.UpdatedAt = now; }
-                else if (entry.Entity is Group g) { g.CreatedAt = now; g.UpdatedAt = now; }
-                else if (entry.Entity is Entry en) { en.CreatedAt = now; en.UpdatedAt = now; }
-                else if (entry.Entity is GroupUser gu) { gu.JoinedAt = now; }
-                else if (entry.Entity is MediaAttachment m) { m.UploadedAt = now; }
-                else if (entry.Entity is Reaction r) { r.CreatedAt = now; }
-                else if (entry.Entity is GroupInvite gi) { gi.CreatedAt = now; gi.UpdatedAt = now; }
+                // set CreatedAt and UpdatedAt for new entities
+                // this fixes issue where CreatedAt and UpdatedAt are unconditionally being overrided
+                // this was needed since during testing for streaks and payments where the timestamps are overwritten by current system time
+                // which can break testing
+                if (entry.Entity is User u) { if (u.CreatedAt == default) u.CreatedAt = now; u.UpdatedAt = now; }
+                else if (entry.Entity is Group g) { if (g.CreatedAt == default) g.CreatedAt = now; g.UpdatedAt = now; }
+                else if (entry.Entity is Entry en) { if (en.CreatedAt == default) en.CreatedAt = now; en.UpdatedAt = now; }
+                else if (entry.Entity is GroupUser gu) { if (gu.JoinedAt == default) gu.JoinedAt = now; }
+                else if (entry.Entity is MediaAttachment m) { if (m.UploadedAt == default) m.UploadedAt = now; }
+                else if (entry.Entity is Reaction r) { if (r.CreatedAt == default) r.CreatedAt = now; }
+                else if (entry.Entity is GroupInvite gi) { if (gi.CreatedAt == default) gi.CreatedAt = now; gi.UpdatedAt = now; }
             }
             else if (entry.State == EntityState.Modified)
             {

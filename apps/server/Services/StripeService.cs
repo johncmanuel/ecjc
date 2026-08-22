@@ -49,7 +49,7 @@ public class StripeService : IStripeService
         return await _setupIntentService.CreateAsync(options);
     }
 
-    public async Task<PaymentIntent> ChargeCustomerAsync(string customerId, int amountCents, string description = "Penalty")
+    public async Task<PaymentIntent> ChargeCustomerAsync(string customerId, int amountCents, string description = "Penalty", Dictionary<string, string>? metadata = null)
     {
         var options = new PaymentIntentCreateOptions
         {
@@ -58,7 +58,8 @@ public class StripeService : IStripeService
             Customer = customerId,
             Confirm = true,
             OffSession = true,
-            Description = description
+            Description = description,
+            Metadata = metadata
         };
 
         return await _paymentIntentService.CreateAsync(options);

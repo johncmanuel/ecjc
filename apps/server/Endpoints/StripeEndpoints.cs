@@ -57,7 +57,8 @@ public static class StripeEndpoints
     private static async Task<IResult> StripeWebhook(
         HttpRequest request,
         IConfiguration config,
-        ApplicationDbContext db)
+        ApplicationDbContext db,
+        CentrifugoService centrifugo)
     {
         var json = await new StreamReader(request.Body).ReadToEndAsync();
         var endpointSecret = config["Stripe:WebhookSecret"] ?? Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET");
@@ -70,19 +71,15 @@ public static class StripeEndpoints
                 endpointSecret
             );
 
-            // Handle the event
+            // Handle the event (we could do a switch statement, tbh, too lazy to fix rn)
             if (stripeEvent.Type == EventTypes.SetupIntentSucceeded)
             {
                 var setupIntent = stripeEvent.Data.Object as SetupIntent;
                 if (setupIntent?.Customer != null)
                 {
-                    // Find user by customer ID
                     var user = await db.Users.FirstOrDefaultAsync(u => u.StripeCustomerId == setupIntent.Customer.Id);
                     if (user != null)
                     {
-                        // Successfully added a card, could enable penalty here if we wanted, 
-                        // but SettingsEndpoint handles that explicitly.
-                        // For now we just log.
                         Console.WriteLine($"SetupIntentSucceeded for user {user.Id}");
                     }
                 }
@@ -90,12 +87,45 @@ public static class StripeEndpoints
             else if (stripeEvent.Type == EventTypes.PaymentIntentSucceeded)
             {
                 var paymentIntent = stripeEvent.Data.Object as PaymentIntent;
-                Console.WriteLine($"PaymentIntentSucceeded for {paymentIntent?.Amount} cents.");
+                var user = await db.Users.FirstOrDefaultAsync(u => u.StripeCustomerId == paymentIntent.CustomerId);
+                if (user != null)
+                {
+                    var groupId = paymentIntent.Metadata?.GetValueOrDefault("GroupId");
+                    var notificationPayload = new { type = "penalty_charged_success", amount = paymentIntent.Amount, groupId };
+                    await centrifugo.PublishAsync($"user#{user.Id}", notificationPayload);
+                    Console.WriteLine($"PaymentIntentSucceeded for {paymentIntent.Amount} cents for user {user.Id}.");
+                }
             }
             else if (stripeEvent.Type == EventTypes.PaymentIntentPaymentFailed)
             {
                 var paymentIntent = stripeEvent.Data.Object as PaymentIntent;
-                Console.WriteLine($"PaymentIntentFailed for {paymentIntent?.Amount} cents. Reason: {paymentIntent?.LastPaymentError?.Message}");
+                var user = await db.Users.FirstOrDefaultAsync(u => u.StripeCustomerId == paymentIntent.CustomerId);
+                if (user != null)
+                {
+                    user.IsPenaltyEnabled = false;
+                    await db.SaveChangesAsync();
+                    
+                    var notificationPayload = new { type = "penalty_charged_failed", reason = "declined" };
+                    await centrifugo.PublishAsync($"user#{user.Id}", notificationPayload);
+                    Console.WriteLine($"PaymentIntentFailed for user {user.Id}. Disabled penalty.");
+                }
+            }
+            else if (stripeEvent.Type == EventTypes.ChargeDisputeCreated)
+            {
+                var dispute = stripeEvent.Data.Object as Dispute;
+                var chargeService = new ChargeService();
+                var charge = await chargeService.GetAsync(dispute.ChargeId);
+                
+                var user = await db.Users.FirstOrDefaultAsync(u => u.StripeCustomerId == charge.CustomerId);
+                if (user != null)
+                {
+                    user.IsPenaltyEnabled = false;
+                    await db.SaveChangesAsync();
+                    
+                    var notificationPayload = new { type = "penalty_disputed" };
+                    await centrifugo.PublishAsync($"user#{user.Id}", notificationPayload);
+                    Console.WriteLine($"ChargeDisputeCreated for user {user.Id}. Disabled penalty.");
+                }
             }
 
             return Results.Ok();

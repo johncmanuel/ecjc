@@ -17,10 +17,14 @@ public class StreakMonitorBackgroundService(
         {
             var now = _timeProvider.GetUtcNow();
             
+#if DEBUG
+            var delay = TimeSpan.FromSeconds(30);
+            _logger.LogInformation("DEBUG MODE: Next streak evaluation scheduled in 30 seconds.");
+#else
             var tomorrow = now.UtcDateTime.Date.AddDays(1);
             var delay = tomorrow - now.UtcDateTime;
-
             _logger.LogInformation("Next streak evaluation scheduled in {TotalHours} hours.", delay.TotalHours);
+#endif
 
             try
             {

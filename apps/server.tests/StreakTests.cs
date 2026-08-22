@@ -12,7 +12,7 @@ public class MockStripeService : IStripeService
 {
     public List<(string CustomerId, int AmountCents)> Charges = new();
 
-    public Task<PaymentIntent> ChargeCustomerAsync(string customerId, int amountCents, string description = "Penalty")
+    public Task<PaymentIntent> ChargeCustomerAsync(string customerId, int amountCents, string description = "Penalty", Dictionary<string, string>? metadata = null)
     {
         Charges.Add((customerId, amountCents));
         return Task.FromResult(new PaymentIntent());
@@ -48,8 +48,8 @@ public class StreakEvaluationTests
         var logger = NullLogger<StreakEvaluationService>.Instance;
         // Mock centrifugo service simply using null config, wait it might throw if not initialized
         // Better to skip Centrifugo or just pass null if it accepts it. Let's look at CentrifugoService constructor.
-        var centrifugo = new CentrifugoService(new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build(), NullLogger<CentrifugoService>.Instance);
-        var evaluator = new StreakEvaluationService(db, stripeMock, centrifugo, logger);
+
+        var evaluator = new StreakEvaluationService(db, stripeMock, logger);
 
         var groupId = Guid.NewGuid();
         var user1Id = "user1";
@@ -64,8 +64,8 @@ public class StreakEvaluationTests
 
         var targetDate = new DateTime(2023, 10, 10, 0, 0, 0, DateTimeKind.Utc);
         
-        db.Entries.Add(new Entry { GroupId = groupId, AuthorId = user1Id, TextContent = "a", CreatedAt = targetDate.AddHours(5) });
-        db.Entries.Add(new Entry { GroupId = groupId, AuthorId = user2Id, TextContent = "b", CreatedAt = targetDate.AddHours(10) });
+        db.Entries.Add(new Entry { Id = Guid.NewGuid(), GroupId = groupId, AuthorId = user1Id, TextContent = "a", CreatedAt = targetDate.AddHours(5) });
+        db.Entries.Add(new Entry { Id = Guid.NewGuid(), GroupId = groupId, AuthorId = user2Id, TextContent = "b", CreatedAt = targetDate.AddHours(10) });
         await db.SaveChangesAsync();
 
         await evaluator.EvaluateDailyStreaksAsync(targetDate);
@@ -81,8 +81,8 @@ public class StreakEvaluationTests
         var db = GetInMemoryDbContext();
         var stripeMock = new MockStripeService();
         var logger = NullLogger<StreakEvaluationService>.Instance;
-        var centrifugo = new CentrifugoService(new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build(), NullLogger<CentrifugoService>.Instance);
-        var evaluator = new StreakEvaluationService(db, stripeMock, centrifugo, logger);
+
+        var evaluator = new StreakEvaluationService(db, stripeMock, logger);
 
         var groupId = Guid.NewGuid();
         var user1Id = "user1";
@@ -98,7 +98,7 @@ public class StreakEvaluationTests
         var targetDate = new DateTime(2023, 10, 10, 0, 0, 0, DateTimeKind.Utc);
         
         // Only User1 posted
-        db.Entries.Add(new Entry { GroupId = groupId, AuthorId = user1Id, TextContent = "a", CreatedAt = targetDate.AddHours(5) });
+        db.Entries.Add(new Entry { Id = Guid.NewGuid(), GroupId = groupId, AuthorId = user1Id, TextContent = "a", CreatedAt = targetDate.AddHours(5) });
         await db.SaveChangesAsync();
 
         await evaluator.EvaluateDailyStreaksAsync(targetDate);
@@ -116,8 +116,8 @@ public class StreakEvaluationTests
         var db = GetInMemoryDbContext();
         var stripeMock = new MockStripeService();
         var logger = NullLogger<StreakEvaluationService>.Instance;
-        var centrifugo = new CentrifugoService(new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build(), NullLogger<CentrifugoService>.Instance);
-        var evaluator = new StreakEvaluationService(db, stripeMock, centrifugo, logger);
+
+        var evaluator = new StreakEvaluationService(db, stripeMock, logger);
 
         var groupId = Guid.NewGuid();
         var user1Id = "user1";
@@ -133,7 +133,7 @@ public class StreakEvaluationTests
         var targetDate = new DateTime(2023, 10, 10, 0, 0, 0, DateTimeKind.Utc);
         
         // Neither posted on targetDate
-        db.Entries.Add(new Entry { GroupId = groupId, AuthorId = user1Id, TextContent = "a", CreatedAt = targetDate.AddDays(-1) });
+        db.Entries.Add(new Entry { Id = Guid.NewGuid(), GroupId = groupId, AuthorId = user1Id, TextContent = "a", CreatedAt = targetDate.AddDays(-1) });
         await db.SaveChangesAsync();
 
         await evaluator.EvaluateDailyStreaksAsync(targetDate);
