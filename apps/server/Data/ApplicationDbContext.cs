@@ -17,9 +17,10 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
     // Better Auth auxiliary tables
     public DbSet<Session> Sessions => Set<Session>();
-    public DbSet<Account> Accounts => Set<Account>();
+    public DbSet<server.Data.Models.Account> Accounts => Set<server.Data.Models.Account>();
     public DbSet<Verification> Verifications => Set<Verification>();
     public DbSet<Jwks> Jwks => Set<Jwks>();
+    public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -46,6 +47,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             e.Property(u => u.StripeCustomerId).HasColumnName("stripeCustomerId");
             e.Property(u => u.IsPenaltyEnabled).HasColumnName("isPenaltyEnabled");
             e.Property(u => u.PenaltyAmount).HasColumnName("penaltyAmount");
+            e.Property(u => u.AccumulatedPenaltyCents).HasColumnName("accumulatedPenaltyCents");
         });
 
         // auxiliary table mappings
@@ -192,6 +194,20 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             e.HasIndex(gi => new { gi.GroupId, gi.InviterId, gi.InviteeId })
                 .HasFilter("\"Status\" = 'Pending'")
                 .IsUnique();
+        });
+
+        modelBuilder.Entity<ApiKey>(e =>
+        {
+            e.ToTable("apiKeys");
+            e.HasKey(a => a.Id);
+            e.Property(a => a.Id).HasColumnName("id");
+            e.Property(a => a.UserId).HasColumnName("userId");
+            e.Property(a => a.Name).HasColumnName("name");
+            e.Property(a => a.KeyHash).HasColumnName("keyHash");
+            e.Property(a => a.Prefix).HasColumnName("prefix");
+            e.Property(a => a.CreatedAt).HasColumnName("createdAt");
+            
+            e.HasOne(a => a.User).WithMany(u => u.ApiKeys).HasForeignKey(a => a.UserId);
         });
     }
 

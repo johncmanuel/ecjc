@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using server.Data;
@@ -11,9 +12,11 @@ using server.Data;
 namespace server.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260823032430_AddAccumulatedPenalty")]
+    partial class AddAccumulatedPenalty
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -84,43 +87,6 @@ namespace server.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("account", (string)null);
-                });
-
-            modelBuilder.Entity("server.Data.Models.ApiKey", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text")
-                        .HasColumnName("id");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("createdAt");
-
-                    b.Property<string>("KeyHash")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("keyHash");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("name");
-
-                    b.Property<string>("Prefix")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("prefix");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("userId");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("apiKeys", (string)null);
                 });
 
             modelBuilder.Entity("server.Data.Models.Entry", b =>
@@ -381,9 +347,6 @@ namespace server.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("accumulatedPenaltyCents");
 
-                    b.Property<string>("CashAppHandle")
-                        .HasColumnType("text");
-
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("createdAt");
@@ -428,9 +391,6 @@ namespace server.Migrations
                         .HasColumnType("text")
                         .HasColumnName("name");
 
-                    b.Property<string>("PayPalHandle")
-                        .HasColumnType("text");
-
                     b.Property<int>("PenaltyAmount")
                         .HasColumnType("integer")
                         .HasColumnName("penaltyAmount");
@@ -442,9 +402,6 @@ namespace server.Migrations
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updatedAt");
-
-                    b.Property<string>("VenmoHandle")
-                        .HasColumnType("text");
 
                     b.HasKey("Id");
 
@@ -491,17 +448,6 @@ namespace server.Migrations
                 {
                     b.HasOne("server.Data.Models.User", "User")
                         .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("server.Data.Models.ApiKey", b =>
-                {
-                    b.HasOne("server.Data.Models.User", "User")
-                        .WithMany("ApiKeys")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -631,8 +577,6 @@ namespace server.Migrations
 
             modelBuilder.Entity("server.Data.Models.User", b =>
                 {
-                    b.Navigation("ApiKeys");
-
                     b.Navigation("Entries");
 
                     b.Navigation("GroupUsers");

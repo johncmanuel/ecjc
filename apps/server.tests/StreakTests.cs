@@ -4,30 +4,11 @@ using Microsoft.Extensions.Logging.Abstractions;
 using server.Data;
 using server.Data.Models;
 using server.Services;
-using Stripe;
+
 
 namespace server.tests;
 
-public class MockStripeService : IStripeService
-{
-    public List<(string CustomerId, int AmountCents)> Charges = new();
 
-    public Task<PaymentIntent> ChargeCustomerAsync(string customerId, int amountCents, string description = "Penalty", Dictionary<string, string>? metadata = null)
-    {
-        Charges.Add((customerId, amountCents));
-        return Task.FromResult(new PaymentIntent());
-    }
-
-    public Task<SetupIntent> CreateSetupIntentAsync(string customerId)
-    {
-        return Task.FromResult(new SetupIntent());
-    }
-
-    public Task<string> GetOrCreateCustomerAsync(User user)
-    {
-        return Task.FromResult("cus_mock");
-    }
-}
 
 public class StreakEvaluationTests
 {
@@ -44,12 +25,11 @@ public class StreakEvaluationTests
     public async Task EvaluateDailyStreaks_BothUsersPosted_IncrementsStreak()
     {
         var db = GetInMemoryDbContext();
-        var stripeMock = new MockStripeService();
         var logger = NullLogger<StreakEvaluationService>.Instance;
         // Mock centrifugo service simply using null config, wait it might throw if not initialized
         // Better to skip Centrifugo or just pass null if it accepts it. Let's look at CentrifugoService constructor.
 
-        var evaluator = new StreakEvaluationService(db, stripeMock, logger);
+        var evaluator = new StreakEvaluationService(db, logger);
 
         var groupId = Guid.NewGuid();
         var user1Id = "user1";
@@ -72,17 +52,16 @@ public class StreakEvaluationTests
 
         var updatedGroup = await db.Groups.FindAsync(groupId);
         Assert.Equal(2, updatedGroup!.StreakCount);
-        Assert.Empty(stripeMock.Charges);
+        
     }
 
     [Fact]
     public async Task EvaluateDailyStreaks_OneUserMissed_BreaksStreakAndChargesSlacker()
     {
         var db = GetInMemoryDbContext();
-        var stripeMock = new MockStripeService();
         var logger = NullLogger<StreakEvaluationService>.Instance;
 
-        var evaluator = new StreakEvaluationService(db, stripeMock, logger);
+        var evaluator = new StreakEvaluationService(db, logger);
 
         var groupId = Guid.NewGuid();
         var user1Id = "user1";
@@ -106,18 +85,20 @@ public class StreakEvaluationTests
         var updatedGroup = await db.Groups.FindAsync(groupId);
         Assert.Equal(0, updatedGroup!.StreakCount); // Streak broken
         
-        Assert.Single(stripeMock.Charges);
-        Assert.Equal("cus_2", stripeMock.Charges[0].CustomerId); // User 2 is charged
+        var slackerUser = await db.Users.FindAsync(user2Id);
+        var goodUser = await db.Users.FindAsync(user1Id);
+        
+        Assert.Equal(500, slackerUser!.AccumulatedPenaltyCents);
+        Assert.Equal(0, goodUser!.AccumulatedPenaltyCents);
     }
 
     [Fact]
     public async Task EvaluateDailyStreaks_BothUsersMissed_BreaksStreakAndChargesBoth()
     {
         var db = GetInMemoryDbContext();
-        var stripeMock = new MockStripeService();
         var logger = NullLogger<StreakEvaluationService>.Instance;
 
-        var evaluator = new StreakEvaluationService(db, stripeMock, logger);
+        var evaluator = new StreakEvaluationService(db, logger);
 
         var groupId = Guid.NewGuid();
         var user1Id = "user1";
@@ -141,8 +122,10 @@ public class StreakEvaluationTests
         var updatedGroup = await db.Groups.FindAsync(groupId);
         Assert.Equal(0, updatedGroup!.StreakCount); // Streak broken
         
-        Assert.Equal(2, stripeMock.Charges.Count);
-        Assert.Contains(stripeMock.Charges, c => c.CustomerId == "cus_1");
-        Assert.Contains(stripeMock.Charges, c => c.CustomerId == "cus_2");
+        var u1 = await db.Users.FindAsync(user1Id);
+        var u2 = await db.Users.FindAsync(user2Id);
+
+        Assert.Equal(500, u1!.AccumulatedPenaltyCents);
+        Assert.Equal(500, u2!.AccumulatedPenaltyCents);
     }
 }

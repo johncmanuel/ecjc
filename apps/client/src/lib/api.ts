@@ -11,6 +11,8 @@ export interface IApiClient {
 
     getMe(signal?: AbortSignal): Promise<UserProfileResponse>;
 
+    updateMe(req: UpdateProfileRequest, signal?: AbortSignal): Promise<UserProfileResponse>;
+
     getByCode(code: string, signal?: AbortSignal): Promise<UserPublicProfileResponse>;
 
     getMyGroups(signal?: AbortSignal): Promise<GroupSummaryResponse[]>;
@@ -51,17 +53,17 @@ export interface IApiClient {
 
     cancelInvite(id: string, signal?: AbortSignal): Promise<void>;
 
-    /**
-     * CreateSetupIntent
-     */
-    postApiStripeSetupIntent(signal?: AbortSignal): Promise<SetupIntentResponse>;
+    getApiSettingsPenalty(signal?: AbortSignal): Promise<PenaltySettingsResponse>;
 
-    postApiStripeWebhook(signal?: AbortSignal): Promise<void>;
-
-    /**
-     * UpdatePenaltySettings
-     */
     postApiSettingsPenalty(req: UpdatePenaltyRequest, signal?: AbortSignal): Promise<void>;
+
+    postApiSettingsPenaltySettle(signal?: AbortSignal): Promise<void>;
+
+    getApiSettingsApiKeys(signal?: AbortSignal): Promise<ApiKeyResponse[]>;
+
+    postApiSettingsApiKeys(req: CreateApiKeyRequest, signal?: AbortSignal): Promise<CreateApiKeyResponse>;
+
+    deleteApiSettingsApiKeys(id: string, signal?: AbortSignal): Promise<void>;
 }
 
 export class ApiClient implements IApiClient {
@@ -100,11 +102,43 @@ export class ApiClient implements IApiClient {
             result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as UserProfileResponse;
             return result200;
             });
-        } else if (status === 404) {
+        } else if (status !== 200 && status !== 204) {
             return response.text().then((_responseText) => {
-            let result404: any = null;
-            result404 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as ErrorResponse;
-            return throwException("A server side error occurred.", status, _responseText, _headers, result404);
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<UserProfileResponse>(null as any);
+    }
+
+    updateMe(req: UpdateProfileRequest, signal?: AbortSignal): Promise<UserProfileResponse> {
+        let url_ = this.baseUrl + "/api/users/me";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(req);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "PUT",
+            signal,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processUpdateMe(_response);
+        });
+    }
+
+    protected processUpdateMe(response: Response): Promise<UserProfileResponse> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as UserProfileResponse;
+            return result200;
             });
         } else if (status !== 200 && status !== 204) {
             return response.text().then((_responseText) => {
@@ -142,12 +176,6 @@ export class ApiClient implements IApiClient {
             let result200: any = null;
             result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as UserPublicProfileResponse;
             return result200;
-            });
-        } else if (status === 404) {
-            return response.text().then((_responseText) => {
-            let result404: any = null;
-            result404 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as ErrorResponse;
-            return throwException("A server side error occurred.", status, _responseText, _headers, result404);
             });
         } else if (status !== 200 && status !== 204) {
             return response.text().then((_responseText) => {
@@ -1006,15 +1034,12 @@ export class ApiClient implements IApiClient {
         return Promise.resolve<void>(null as any);
     }
 
-    /**
-     * CreateSetupIntent
-     */
-    postApiStripeSetupIntent(signal?: AbortSignal): Promise<SetupIntentResponse> {
-        let url_ = this.baseUrl + "/api/stripe/setup-intent";
+    getApiSettingsPenalty(signal?: AbortSignal): Promise<PenaltySettingsResponse> {
+        let url_ = this.baseUrl + "/api/settings/penalty";
         url_ = url_.replace(/[?&]$/, "");
 
         let options_: RequestInit = {
-            method: "POST",
+            method: "GET",
             signal,
             headers: {
                 "Accept": "application/json"
@@ -1022,65 +1047,27 @@ export class ApiClient implements IApiClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processPostApiStripeSetupIntent(_response);
+            return this.processGetApiSettingsPenalty(_response);
         });
     }
 
-    protected processPostApiStripeSetupIntent(response: Response): Promise<SetupIntentResponse> {
+    protected processGetApiSettingsPenalty(response: Response): Promise<PenaltySettingsResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
             return response.text().then((_responseText) => {
             let result200: any = null;
-            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as SetupIntentResponse;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as PenaltySettingsResponse;
             return result200;
             });
-        } else if (status === 404) {
-            return response.text().then((_responseText) => {
-            return throwException("A server side error occurred.", status, _responseText, _headers);
-            });
         } else if (status !== 200 && status !== 204) {
             return response.text().then((_responseText) => {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<SetupIntentResponse>(null as any);
+        return Promise.resolve<PenaltySettingsResponse>(null as any);
     }
 
-    postApiStripeWebhook(signal?: AbortSignal): Promise<void> {
-        let url_ = this.baseUrl + "/api/stripe/webhook";
-        url_ = url_.replace(/[?&]$/, "");
-
-        let options_: RequestInit = {
-            method: "POST",
-            signal,
-            headers: {
-            }
-        };
-
-        return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processPostApiStripeWebhook(_response);
-        });
-    }
-
-    protected processPostApiStripeWebhook(response: Response): Promise<void> {
-        const status = response.status;
-        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
-        if (status === 200) {
-            return response.text().then((_responseText) => {
-            return;
-            });
-        } else if (status !== 200 && status !== 204) {
-            return response.text().then((_responseText) => {
-            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
-            });
-        }
-        return Promise.resolve<void>(null as any);
-    }
-
-    /**
-     * UpdatePenaltySettings
-     */
     postApiSettingsPenalty(req: UpdatePenaltyRequest, signal?: AbortSignal): Promise<void> {
         let url_ = this.baseUrl + "/api/settings/penalty";
         url_ = url_.replace(/[?&]$/, "");
@@ -1108,9 +1095,142 @@ export class ApiClient implements IApiClient {
             return response.text().then((_responseText) => {
             return;
             });
-        } else if (status === 404) {
+        } else if (status !== 200 && status !== 204) {
             return response.text().then((_responseText) => {
-            return throwException("A server side error occurred.", status, _responseText, _headers);
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<void>(null as any);
+    }
+
+    postApiSettingsPenaltySettle(signal?: AbortSignal): Promise<void> {
+        let url_ = this.baseUrl + "/api/settings/penalty/settle";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "POST",
+            signal,
+            headers: {
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processPostApiSettingsPenaltySettle(_response);
+        });
+    }
+
+    protected processPostApiSettingsPenaltySettle(response: Response): Promise<void> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            return;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<void>(null as any);
+    }
+
+    getApiSettingsApiKeys(signal?: AbortSignal): Promise<ApiKeyResponse[]> {
+        let url_ = this.baseUrl + "/api/settings/api-keys";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            signal,
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processGetApiSettingsApiKeys(_response);
+        });
+    }
+
+    protected processGetApiSettingsApiKeys(response: Response): Promise<ApiKeyResponse[]> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as ApiKeyResponse[];
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<ApiKeyResponse[]>(null as any);
+    }
+
+    postApiSettingsApiKeys(req: CreateApiKeyRequest, signal?: AbortSignal): Promise<CreateApiKeyResponse> {
+        let url_ = this.baseUrl + "/api/settings/api-keys";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(req);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "POST",
+            signal,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processPostApiSettingsApiKeys(_response);
+        });
+    }
+
+    protected processPostApiSettingsApiKeys(response: Response): Promise<CreateApiKeyResponse> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as CreateApiKeyResponse;
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<CreateApiKeyResponse>(null as any);
+    }
+
+    deleteApiSettingsApiKeys(id: string, signal?: AbortSignal): Promise<void> {
+        let url_ = this.baseUrl + "/api/settings/api-keys/{id}";
+        if (id === undefined || id === null)
+            throw new globalThis.Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "DELETE",
+            signal,
+            headers: {
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processDeleteApiSettingsApiKeys(_response);
+        });
+    }
+
+    protected processDeleteApiSettingsApiKeys(response: Response): Promise<void> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            return;
             });
         } else if (status !== 200 && status !== 204) {
             return response.text().then((_responseText) => {
@@ -1129,10 +1249,18 @@ export interface UserProfileResponse {
     friendCode?: string;
     image?: string | undefined;
     createdAt?: Date;
+    venmoHandle?: string | undefined;
+    cashAppHandle?: string | undefined;
+    payPalHandle?: string | undefined;
 }
 
-export interface ErrorResponse {
-    error?: string;
+export interface UpdateProfileRequest {
+    name?: string | undefined;
+    firstName?: string | undefined;
+    lastName?: string | undefined;
+    venmoHandle?: string | undefined;
+    cashAppHandle?: string | undefined;
+    payPalHandle?: string | undefined;
 }
 
 export interface UserPublicProfileResponse {
@@ -1155,6 +1283,9 @@ export interface GroupMemberResponse {
     lastName?: string | undefined;
     image?: string | undefined;
     hasLeft?: boolean;
+    venmoHandle?: string | undefined;
+    cashAppHandle?: string | undefined;
+    payPalHandle?: string | undefined;
 }
 
 export interface GroupDetailsResponse {
@@ -1163,6 +1294,10 @@ export interface GroupDetailsResponse {
     streakCount?: number;
     createdAt?: Date;
     updatedAt?: Date;
+}
+
+export interface ErrorResponse {
+    error?: string;
 }
 
 export interface InviteCreatedResponse {
@@ -1241,13 +1376,31 @@ export interface AcceptInviteResponse {
     groupId?: string;
 }
 
-export interface SetupIntentResponse {
-    clientSecret?: string;
+export interface PenaltySettingsResponse {
+    isPenaltyEnabled?: boolean;
+    penaltyAmountCents?: number;
+    accumulatedPenaltyCents?: number;
 }
 
 export interface UpdatePenaltyRequest {
     isPenaltyEnabled?: boolean;
     penaltyAmountCents?: number;
+}
+
+export interface ApiKeyResponse {
+    id?: string;
+    name?: string;
+    prefix?: string;
+    createdAt?: Date;
+}
+
+export interface CreateApiKeyResponse {
+    keyDetails?: ApiKeyResponse;
+    token?: string;
+}
+
+export interface CreateApiKeyRequest {
+    name?: string;
 }
 
 export interface FileParameter {

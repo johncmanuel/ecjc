@@ -5,6 +5,7 @@ using server.Data;
 using server.Data.Models;
 using Microsoft.Extensions.Logging;
 
+
 public interface IStreakEvaluationService
 {
     Task EvaluateDailyStreaksAsync(DateTime dateToEvaluate, CancellationToken cancellationToken = default);
@@ -12,20 +13,20 @@ public interface IStreakEvaluationService
 
 public class StreakEvaluationService(
     ApplicationDbContext db,
-    IStripeService stripeService,
     ILogger<StreakEvaluationService> logger) : IStreakEvaluationService
 {                            
     private readonly ApplicationDbContext _db = db;
-    private readonly IStripeService _stripeService = stripeService;
     private readonly ILogger<StreakEvaluationService> _logger = logger;
 
     public async Task EvaluateDailyStreaksAsync(DateTime dateToEvaluate, CancellationToken cancellationToken = default)
     {
         var targetDate = dateToEvaluate.Date;
+        var targetStart = new DateTimeOffset(DateTime.SpecifyKind(targetDate, DateTimeKind.Utc));
+        var targetEnd = targetStart.AddDays(1);
+        
         _logger.LogInformation("Starting daily streak evaluation for {Date}", targetDate.ToShortDateString());
 
         var activeGroups = await _db.Groups
-            .Where(g => g.StreakCount > 0)
             .ToListAsync(cancellationToken);
 
         foreach (var group in activeGroups)
@@ -48,7 +49,8 @@ public class StreakEvaluationService(
                 var posted = await _db.Entries
                     .AnyAsync(e => e.GroupId == group.Id 
                                    && e.AuthorId == user.Id 
-                                   && e.CreatedAt.Date == targetDate, cancellationToken);
+                                   && e.CreatedAt >= targetStart 
+                                   && e.CreatedAt < targetEnd, cancellationToken);
 
                 if (!posted)
                 {
@@ -69,30 +71,11 @@ public class StreakEvaluationService(
 
                 foreach (var slacker in slackers)
                 {
-                    if (slacker.IsPenaltyEnabled && !string.IsNullOrEmpty(slacker.StripeCustomerId) && slacker.PenaltyAmount > 0)
+                    if (slacker.IsPenaltyEnabled && slacker.PenaltyAmount > 0)
                     {
-                        try
-                        {
-                            // send off-session charge to Stripe for the penalty amount
-                            // if stripe webhook returns a successful charge, we can log it and notify the user with centrifugo
-                            var metadata = new Dictionary<string, string>
-                            {
-                                { "GroupId", group.Id.ToString() },
-                                { "Date", targetDate.ToString("yyyy-MM-dd") }
-                            };
-
-                            await _stripeService.ChargeCustomerAsync(
-                                slacker.StripeCustomerId, 
-                                slacker.PenaltyAmount, 
-                                $"Penalty for broken streak in group {group.Id}",
-                                metadata);
-                                
-                            _logger.LogInformation("Requested off-session charge for {Email} for {Amount} cents.", slacker.Email, slacker.PenaltyAmount);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "Failed to charge {Email}.", slacker.Email);
-                        }
+                        slacker.AccumulatedPenaltyCents += slacker.PenaltyAmount;
+                        _logger.LogInformation("Added penalty of {Amount} cents to {Email}. New total: {Total} cents.", 
+                            slacker.PenaltyAmount, slacker.Email, slacker.AccumulatedPenaltyCents);
                     }
                 }
             }
