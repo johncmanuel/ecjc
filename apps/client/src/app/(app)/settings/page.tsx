@@ -4,13 +4,15 @@ import { useState, useEffect } from "react";
 import SettingsRow  from "@/components/streak/SettingsRow";
 import SignOutButton from "@/components/ui/SignOutButton";
 import SettlementModal from "@/components/streak/SettlementModal";
+import { useGroups } from "@/components/GroupProvider";
 import { useApi } from "@/hooks/useApi";
 import { UserProfileResponse, ApiKeyResponse } from "@/lib/api";
-import { Copy, Trash2, KeyRound, Save, Loader2, Check } from "lucide-react";
+import { Copy, Trash2, KeyRound, Save, Loader2, Check, ChevronDown } from "lucide-react";
 
 export default function SettingsPage() {
+  const { activeGroup, refreshGroups } = useGroups();
   const [moneyPledge, setMoneyPledge] = useState(false);
-  const [accumulatedPenalty, setAccumulatedPenalty] = useState(0);
+  const accumulatedPenalty = activeGroup?.accumulatedPenaltyCents ? activeGroup.accumulatedPenaltyCents / 100 : 0;
   const [isSettlementModalOpen, setIsSettlementModalOpen] = useState(false);
   
   const [profile, setProfile] = useState<UserProfileResponse | null>(null);
@@ -27,6 +29,7 @@ export default function SettingsPage() {
 
   const [apiKeys, setApiKeys] = useState<ApiKeyResponse[]>([]);
   const [newKeyName, setNewKeyName] = useState("");
+  const [newKeyExpiresIn, setNewKeyExpiresIn] = useState<number | "">("");
   const [generatedToken, setGeneratedToken] = useState<string | null>(null);
   const [isGeneratingKey, setIsGeneratingKey] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -56,7 +59,6 @@ export default function SettingsPage() {
 
         if (penaltyRes) {
           setMoneyPledge(penaltyRes.isPenaltyEnabled);
-          setAccumulatedPenalty(penaltyRes.accumulatedPenaltyCents ? penaltyRes.accumulatedPenaltyCents / 100 : 0);
         }
       } catch (e) {
         console.error("Failed to load settings data", e);
@@ -102,10 +104,14 @@ export default function SettingsPage() {
     
     setIsGeneratingKey(true);
     try {
-      const res = await api.postApiSettingsApiKeys({ name: newKeyName.trim() });
+      const res = await api.postApiSettingsApiKeys({ 
+        name: newKeyName.trim(), 
+        expiresInDays: newKeyExpiresIn === "" ? undefined : newKeyExpiresIn
+      });
       setApiKeys([...apiKeys, res.keyDetails]);
       setGeneratedToken(res.token);
       setNewKeyName("");
+      setNewKeyExpiresIn("");
       setCopied(false);
     } catch (e) {
       console.error("Failed to create API key", e);
@@ -139,7 +145,6 @@ export default function SettingsPage() {
 
       <div className="px-4.5 mt-5 space-y-10">
         
-        {/* PROFILE SECTION */}
         <section>
           <div className="text-[11px] uppercase tracking-wider text-ink-faint font-medium mb-3 px-1">
             Profile Settings
@@ -155,7 +160,7 @@ export default function SettingsPage() {
                       type="text" 
                       value={editFirstName} 
                       onChange={(e) => setEditFirstName(e.target.value)}
-                      className="w-full bg-page border border-line rounded-lg px-3 py-2 text-sm text-ink focus:outline-none focus:border-ink-soft transition-colors"
+                      className="w-full bg-paper border border-line rounded-lg px-3 py-2 text-sm text-ink focus:outline-none focus:border-ink-soft transition-colors"
                     />
                   </div>
                   <div>
@@ -164,7 +169,7 @@ export default function SettingsPage() {
                       type="text" 
                       value={editLastName} 
                       onChange={(e) => setEditLastName(e.target.value)}
-                      className="w-full bg-page border border-line rounded-lg px-3 py-2 text-sm text-ink focus:outline-none focus:border-ink-soft transition-colors"
+                      className="w-full bg-paper border border-line rounded-lg px-3 py-2 text-sm text-ink focus:outline-none focus:border-ink-soft transition-colors"
                     />
                   </div>
                 </div>
@@ -175,7 +180,7 @@ export default function SettingsPage() {
                     type="text" 
                     value={editName} 
                     onChange={(e) => setEditName(e.target.value)}
-                    className="w-full bg-page border border-line rounded-lg px-3 py-2 text-sm text-ink focus:outline-none focus:border-ink-soft transition-colors"
+                    className="w-full bg-paper border border-line rounded-lg px-3 py-2 text-sm text-ink focus:outline-none focus:border-ink-soft transition-colors"
                   />
                 </div>
 
@@ -189,7 +194,7 @@ export default function SettingsPage() {
                         placeholder="@username"
                         value={editVenmo} 
                         onChange={(e) => setEditVenmo(e.target.value)}
-                        className="w-full bg-page border border-line rounded-lg px-3 py-2 text-sm text-ink focus:outline-none focus:border-ink-soft transition-colors"
+                        className="w-full bg-paper border border-line rounded-lg px-3 py-2 text-sm text-ink focus:outline-none focus:border-ink-soft transition-colors"
                       />
                     </div>
                     <div>
@@ -199,7 +204,7 @@ export default function SettingsPage() {
                         placeholder="$cashtag"
                         value={editCashApp} 
                         onChange={(e) => setEditCashApp(e.target.value)}
-                        className="w-full bg-page border border-line rounded-lg px-3 py-2 text-sm text-ink focus:outline-none focus:border-ink-soft transition-colors"
+                        className="w-full bg-paper border border-line rounded-lg px-3 py-2 text-sm text-ink focus:outline-none focus:border-ink-soft transition-colors"
                       />
                     </div>
                     <div>
@@ -209,7 +214,7 @@ export default function SettingsPage() {
                         placeholder="username"
                         value={editPayPal} 
                         onChange={(e) => setEditPayPal(e.target.value)}
-                        className="w-full bg-page border border-line rounded-lg px-3 py-2 text-sm text-ink focus:outline-none focus:border-ink-soft transition-colors"
+                        className="w-full bg-paper border border-line rounded-lg px-3 py-2 text-sm text-ink focus:outline-none focus:border-ink-soft transition-colors"
                       />
                     </div>
                   </div>
@@ -233,7 +238,7 @@ export default function SettingsPage() {
                   <button 
                     onClick={handleSaveProfile}
                     disabled={isSavingProfile}
-                    className="flex items-center px-4 py-2 text-sm font-medium bg-ink text-page rounded-lg hover:bg-ink-soft transition-colors disabled:opacity-50"
+                    className="flex items-center px-4 py-2 text-sm font-medium bg-paper border border-line text-ink rounded-lg hover:border-ink-soft transition-colors disabled:opacity-50"
                   >
                     {isSavingProfile ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                     Save Changes
@@ -253,7 +258,7 @@ export default function SettingsPage() {
                   </div>
                   <button 
                     onClick={() => setIsEditingProfile(true)}
-                    className="px-4 py-2 text-sm font-medium bg-page border border-line rounded-lg hover:border-ink-soft transition-colors text-ink"
+                    className="px-4 py-2 text-sm font-medium bg-paper border border-line rounded-lg hover:border-ink-soft transition-colors text-ink"
                   >
                     Edit
                   </button>
@@ -279,7 +284,6 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        {/* PENALTY SECTION */}
         <section>
           <div className="text-[11px] uppercase tracking-wider text-ink-faint font-medium mb-2 px-1">
             If a day is missed
@@ -299,7 +303,7 @@ export default function SettingsPage() {
                 </span>
                 <button 
                   onClick={() => setIsSettlementModalOpen(true)}
-                  className="text-xs font-medium bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg transition-colors shadow-sm"
+                  className="text-xs font-medium bg-red-500/5 border border-red-500/20 text-red-600 hover:bg-red-500/10 px-3 py-1.5 rounded-lg transition-colors shadow-sm"
                 >
                   Mark as Settled
                 </button>
@@ -308,7 +312,6 @@ export default function SettingsPage() {
           )}
         </section>
 
-        {/* API KEYS SECTION */}
         <section>
           <div className="flex items-center justify-between mb-3 px-1">
             <div className="text-[11px] uppercase tracking-wider text-ink-faint font-medium">
@@ -333,12 +336,12 @@ export default function SettingsPage() {
                   Key generated successfully! Copy this token now. You will not be able to see it again.
                 </p>
                 <div className="flex items-center space-x-2">
-                  <code className="flex-1 bg-page border border-green-500/20 rounded-md px-3 py-2 text-sm font-mono text-green-800 break-all">
+                  <code className="flex-1 bg-paper border border-green-500/20 rounded-md px-3 py-2 text-sm font-mono text-green-800 break-all">
                     {generatedToken}
                   </code>
                   <button 
                     onClick={handleCopyToken}
-                    className="p-2 bg-page border border-green-500/20 text-green-700 rounded-md hover:bg-green-500/10 transition-colors"
+                    className="p-2 bg-paper border border-green-500/20 text-green-700 rounded-md hover:bg-green-500/10 transition-colors"
                   >
                     {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                   </button>
@@ -348,24 +351,41 @@ export default function SettingsPage() {
 
             {apiKeys.length > 0 ? (
               <div className="space-y-3">
-                {apiKeys.map(key => (
-                  <div key={key.id} className="flex items-center justify-between p-3 bg-page border border-line rounded-lg">
-                    <div>
-                      <p className="text-sm font-medium text-ink">{key.name}</p>
-                      <div className="flex items-center mt-1 space-x-3 text-xs text-ink-faint">
-                        <code className="px-1.5 py-0.5 bg-card border border-line rounded font-mono">{key.prefix}</code>
-                        <span>Created {new Date(key.createdAt).toLocaleDateString()}</span>
+                {apiKeys.map(key => {
+                  const isExpired = key.expiresAt && new Date(key.expiresAt) < new Date();
+                  return (
+                    <div key={key.id} className="flex items-start justify-between p-3 bg-paper border border-line rounded-lg gap-2">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2">
+                          <p className={`text-sm font-medium ${isExpired ? 'text-ink-faint line-through' : 'text-ink'}`}>
+                            {key.name}
+                          </p>
+                          {isExpired && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] uppercase font-bold bg-red-500/10 text-red-600">
+                              Expired
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mt-1 text-xs text-ink-faint">
+                          <code className="px-1.5 py-0.5 bg-card border border-line rounded font-mono shrink-0">{key.prefix}</code>
+                          <span className="shrink-0">Created {new Date(key.createdAt).toLocaleDateString()}</span>
+                          {key.expiresAt ? (
+                            <span className="shrink-0">Expires {new Date(key.expiresAt).toLocaleDateString()}</span>
+                          ) : (
+                            <span className="shrink-0">Never expires</span>
+                          )}
+                        </div>
                       </div>
+                      <button 
+                        onClick={() => handleRevokeApiKey(key.id)}
+                        className="p-2 -mt-1 -mr-1 text-red-500 hover:bg-red-500/10 rounded-md transition-colors shrink-0"
+                        title="Revoke Token"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
-                    <button 
-                      onClick={() => handleRevokeApiKey(key.id)}
-                      className="p-2 text-red-500 hover:bg-red-500/10 rounded-md transition-colors"
-                      title="Revoke Token"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="text-sm text-ink-faint italic px-1">
@@ -375,21 +395,37 @@ export default function SettingsPage() {
 
             <form onSubmit={handleCreateApiKey} className="pt-2">
               <label className="block text-xs font-medium text-ink-faint mb-2">Create New Token</label>
-              <div className="flex space-x-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <input 
                   type="text" 
                   value={newKeyName}
                   onChange={(e) => setNewKeyName(e.target.value)}
-                  placeholder="What's this token for? (e.g. My AI Agent)"
-                  className="flex-1 bg-page border border-line rounded-lg px-3 py-2 text-sm text-ink focus:outline-none focus:border-ink-soft transition-colors"
+                  placeholder="What's this token for?"
+                  className="flex-[1_1_200px] h-10 bg-paper border border-line rounded-lg px-3 text-sm text-ink focus:outline-none focus:border-ink-soft transition-colors"
                 />
-                <button 
-                  type="submit"
-                  disabled={isGeneratingKey || !newKeyName.trim()}
-                  className="px-4 py-2 text-sm font-medium bg-ink text-page rounded-lg hover:bg-ink-soft transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                >
-                  {isGeneratingKey ? "Generating..." : "Generate"}
-                </button>
+                <div className="flex items-center gap-2 flex-[1_1_auto]">
+                  <div className="relative flex-1">
+                    <select
+                      value={newKeyExpiresIn}
+                      onChange={(e) => setNewKeyExpiresIn(e.target.value === "" ? "" : Number(e.target.value))}
+                      className="w-full h-10 bg-paper border border-line rounded-lg pl-3 pr-8 text-sm text-ink focus:outline-none focus:border-ink-soft transition-colors appearance-none"
+                    >
+                      <option value="">Never expire</option>
+                      <option value="7">7 days</option>
+                      <option value="30">30 days</option>
+                      <option value="90">90 days</option>
+                      <option value="365">1 year</option>
+                    </select>
+                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-soft pointer-events-none" />
+                  </div>
+                  <button 
+                    type="submit"
+                    disabled={isGeneratingKey || !newKeyName.trim()}
+                    className="h-10 px-4 flex items-center justify-center text-sm font-medium bg-paper border border-line text-ink rounded-lg hover:border-ink-soft disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap transition-colors"
+                  >
+                    {isGeneratingKey ? "Generating..." : "Generate"}
+                  </button>
+                </div>
               </div>
             </form>
             
@@ -401,15 +437,18 @@ export default function SettingsPage() {
         </section>
       </div>
 
-      <SettlementModal 
-        isOpen={isSettlementModalOpen}
-        onClose={() => setIsSettlementModalOpen(false)}
-        accumulatedDebt={accumulatedPenalty}
-        onSuccess={() => {
-          setAccumulatedPenalty(0);
-          setIsSettlementModalOpen(false);
-        }}
-      />
+      {activeGroup && (
+        <SettlementModal 
+          isOpen={isSettlementModalOpen}
+          onClose={() => setIsSettlementModalOpen(false)}
+          accumulatedDebt={accumulatedPenalty}
+          groupId={activeGroup.id!}
+          onSuccess={async () => {
+            await refreshGroups();
+            setIsSettlementModalOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }

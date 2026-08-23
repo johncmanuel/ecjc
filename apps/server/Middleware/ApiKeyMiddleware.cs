@@ -27,6 +27,13 @@ public class ApiKeyMiddleware(RequestDelegate next)
 
                 if (keyRecord != null)
                 {
+                    if (keyRecord.ExpiresAt.HasValue && keyRecord.ExpiresAt.Value < DateTimeOffset.UtcNow)
+                    {
+                        context.Response.StatusCode = 401;
+                        await context.Response.WriteAsJsonAsync(new { error = "API key has expired." });
+                        return;
+                    }
+
                     var claims = new[] { new Claim(ClaimTypes.NameIdentifier, keyRecord.UserId) };
                     var identity = new ClaimsIdentity(claims, "ApiKey");
                     context.User = new ClaimsPrincipal(identity);

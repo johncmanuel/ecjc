@@ -31,21 +31,21 @@ public class StreakEvaluationService(
 
         foreach (var group in activeGroups)
         {
-            var usersInGroup = await _db.GroupUsers
+            var groupUsersInGroup = await _db.GroupUsers
                 .Include(gu => gu.User)
                 .Where(gu => gu.GroupId == group.Id)
-                .Select(gu => gu.User)
                 .ToListAsync(cancellationToken);
 
             // requires 2 users to evaluate a shared streak
-            if (usersInGroup.Count < 2) continue;
+            if (groupUsersInGroup.Count < 2) continue;
 
             // bunch of slackers!
-            var slackers = new List<User>();
+            var slackers = new List<GroupUser>();
             var allPosted = true;
 
-            foreach (var user in usersInGroup)
+            foreach (var groupUser in groupUsersInGroup)
             {
+                var user = groupUser.User;
                 var posted = await _db.Entries
                     .AnyAsync(e => e.GroupId == group.Id 
                                    && e.AuthorId == user.Id 
@@ -55,7 +55,7 @@ public class StreakEvaluationService(
                 if (!posted)
                 {
                     allPosted = false;
-                    slackers.Add(user);
+                    slackers.Add(groupUser);
                 }
             }
 
@@ -71,11 +71,12 @@ public class StreakEvaluationService(
 
                 foreach (var slacker in slackers)
                 {
-                    if (slacker.IsPenaltyEnabled && slacker.PenaltyAmount > 0)
+                    var slackerUser = slacker.User;
+                    if (slackerUser.IsPenaltyEnabled && slackerUser.PenaltyAmount > 0)
                     {
-                        slacker.AccumulatedPenaltyCents += slacker.PenaltyAmount;
+                        slacker.AccumulatedPenaltyCents += slackerUser.PenaltyAmount;
                         _logger.LogInformation("Added penalty of {Amount} cents to {Email}. New total: {Total} cents.", 
-                            slacker.PenaltyAmount, slacker.Email, slacker.AccumulatedPenaltyCents);
+                            slackerUser.PenaltyAmount, slackerUser.Email, slacker.AccumulatedPenaltyCents);
                     }
                 }
             }

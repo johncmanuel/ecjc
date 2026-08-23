@@ -57,7 +57,7 @@ export interface IApiClient {
 
     postApiSettingsPenalty(req: UpdatePenaltyRequest, signal?: AbortSignal): Promise<void>;
 
-    postApiSettingsPenaltySettle(signal?: AbortSignal): Promise<void>;
+    postApiSettingsPenaltySettle(groupId: string, signal?: AbortSignal): Promise<void>;
 
     getApiSettingsApiKeys(signal?: AbortSignal): Promise<ApiKeyResponse[]>;
 
@@ -1103,8 +1103,11 @@ export class ApiClient implements IApiClient {
         return Promise.resolve<void>(null as any);
     }
 
-    postApiSettingsPenaltySettle(signal?: AbortSignal): Promise<void> {
-        let url_ = this.baseUrl + "/api/settings/penalty/settle";
+    postApiSettingsPenaltySettle(groupId: string, signal?: AbortSignal): Promise<void> {
+        let url_ = this.baseUrl + "/api/settings/penalty/settle/{groupId}";
+        if (groupId === undefined || groupId === null)
+            throw new globalThis.Error("The parameter 'groupId' must be defined.");
+        url_ = url_.replace("{groupId}", encodeURIComponent("" + groupId));
         url_ = url_.replace(/[?&]$/, "");
 
         let options_: RequestInit = {
@@ -1275,6 +1278,7 @@ export interface GroupSummaryResponse {
     members?: GroupMemberResponse[];
     streakCount?: number;
     updatedAt?: Date;
+    accumulatedPenaltyCents?: number;
 }
 
 export interface GroupMemberResponse {
@@ -1379,7 +1383,6 @@ export interface AcceptInviteResponse {
 export interface PenaltySettingsResponse {
     isPenaltyEnabled?: boolean;
     penaltyAmountCents?: number;
-    accumulatedPenaltyCents?: number;
 }
 
 export interface UpdatePenaltyRequest {
@@ -1392,6 +1395,7 @@ export interface ApiKeyResponse {
     name?: string;
     prefix?: string;
     createdAt?: Date;
+    expiresAt?: Date | undefined;
 }
 
 export interface CreateApiKeyResponse {
@@ -1401,6 +1405,7 @@ export interface CreateApiKeyResponse {
 
 export interface CreateApiKeyRequest {
     name?: string;
+    expiresInDays?: number | undefined;
 }
 
 export interface FileParameter {

@@ -85,11 +85,11 @@ public class StreakEvaluationTests
         var updatedGroup = await db.Groups.FindAsync(groupId);
         Assert.Equal(0, updatedGroup!.StreakCount); // Streak broken
         
-        var slackerUser = await db.Users.FindAsync(user2Id);
-        var goodUser = await db.Users.FindAsync(user1Id);
+        var slackerGroupUser = await db.GroupUsers.FirstAsync(gu => gu.UserId == user2Id && gu.GroupId == groupId);
+        var goodGroupUser = await db.GroupUsers.FirstAsync(gu => gu.UserId == user1Id && gu.GroupId == groupId);
         
-        Assert.Equal(500, slackerUser!.AccumulatedPenaltyCents);
-        Assert.Equal(0, goodUser!.AccumulatedPenaltyCents);
+        Assert.Equal(500, slackerGroupUser.AccumulatedPenaltyCents);
+        Assert.Equal(0, goodGroupUser.AccumulatedPenaltyCents);
     }
 
     [Fact]
@@ -122,10 +122,10 @@ public class StreakEvaluationTests
         var updatedGroup = await db.Groups.FindAsync(groupId);
         Assert.Equal(0, updatedGroup!.StreakCount); // Streak broken
         
-        var u1 = await db.Users.FindAsync(user1Id);
-        var u2 = await db.Users.FindAsync(user2Id);
+        var gu1 = await db.GroupUsers.FirstAsync(gu => gu.UserId == user1Id && gu.GroupId == groupId);
+        var gu2 = await db.GroupUsers.FirstAsync(gu => gu.UserId == user2Id && gu.GroupId == groupId);
 
-        Assert.Equal(500, u1!.AccumulatedPenaltyCents);
-        Assert.Equal(500, u2!.AccumulatedPenaltyCents);
+        Assert.Equal(500, gu1.AccumulatedPenaltyCents);
+        Assert.Equal(500, gu2.AccumulatedPenaltyCents);
     }
 }

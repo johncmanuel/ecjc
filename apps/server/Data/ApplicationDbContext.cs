@@ -47,7 +47,6 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             e.Property(u => u.StripeCustomerId).HasColumnName("stripeCustomerId");
             e.Property(u => u.IsPenaltyEnabled).HasColumnName("isPenaltyEnabled");
             e.Property(u => u.PenaltyAmount).HasColumnName("penaltyAmount");
-            e.Property(u => u.AccumulatedPenaltyCents).HasColumnName("accumulatedPenaltyCents");
         });
 
         // auxiliary table mappings

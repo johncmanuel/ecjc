@@ -24,9 +24,9 @@ public static class SettingsEndpoints
             .WithSummary("Update the current user's penalty settings")
             .Produces(StatusCodes.Status200OK);
 
-        group.MapPost("/penalty/settle", SettleDebt)
+        group.MapPost("/penalty/settle/{groupId:guid}", SettleDebt)
             .RequireAuthorization()
-            .WithSummary("Manually settle the accumulated penalty debt")
+            .WithSummary("Manually settle the accumulated penalty debt for a group")
             .Produces(StatusCodes.Status200OK);
 
         var apiKeysGroup = group.MapGroup("/api-keys").WithTags("API Keys");
@@ -60,8 +60,7 @@ public static class SettingsEndpoints
         return TypedResults.Ok(new PenaltySettingsResponse
         (
             user.IsPenaltyEnabled,
-            user.PenaltyAmount,
-            user.AccumulatedPenaltyCents
+            user.PenaltyAmount
         ));
     }
 
@@ -91,6 +90,7 @@ public static class SettingsEndpoints
 
 
     private static async Task<IResult> SettleDebt(
+        Guid groupId,
         ApplicationDbContext db,
         ClaimsPrincipal userClaims,
         server.Services.CentrifugoService centrifugo)
@@ -98,16 +98,16 @@ public static class SettingsEndpoints
         var userId = userClaims.FindFirstValue(ClaimTypes.NameIdentifier);
         if (userId == null) return TypedResults.Unauthorized();
 
-        var user = await db.Users.FindAsync(userId);
-        if (user == null) return TypedResults.NotFound();
+        var groupUser = await db.GroupUsers.FirstOrDefaultAsync(gu => gu.GroupId == groupId && gu.UserId == userId);
+        if (groupUser == null) return TypedResults.NotFound();
 
-        if (user.AccumulatedPenaltyCents > 0)
+        if (groupUser.AccumulatedPenaltyCents > 0)
         {
-            user.AccumulatedPenaltyCents = 0;
+            groupUser.AccumulatedPenaltyCents = 0;
             await db.SaveChangesAsync();
             
-            var notificationPayload = new { type = "debt_settled", amount = 0 };
-            await centrifugo.PublishAsync($"user#{user.Id}", notificationPayload);
+            var notificationPayload = new { type = "debt_settled", amount = 0, groupId = groupId };
+            await centrifugo.PublishAsync($"user#{userId}", notificationPayload);
         }
 
         return TypedResults.Ok();
@@ -127,7 +127,8 @@ public static class SettingsEndpoints
                 k.Id,
                 k.Name,
                 k.Prefix,
-                k.CreatedAt
+                k.CreatedAt,
+                k.ExpiresAt
             ))
             .ToListAsync();
 
@@ -157,7 +158,10 @@ public static class SettingsEndpoints
             Name = string.IsNullOrWhiteSpace(req.Name) ? "API Key" : req.Name,
             KeyHash = keyHash,
             Prefix = prefix,
-            CreatedAt = DateTimeOffset.UtcNow
+            CreatedAt = DateTimeOffset.UtcNow,
+            ExpiresAt = req.ExpiresInDays.HasValue && req.ExpiresInDays.Value > 0 
+                ? DateTimeOffset.UtcNow.AddDays(req.ExpiresInDays.Value) 
+                : null
         };
 
         db.ApiKeys.Add(apiKey);
@@ -170,7 +174,8 @@ public static class SettingsEndpoints
                 apiKey.Id,
                 apiKey.Name,
                 apiKey.Prefix,
-                apiKey.CreatedAt
+                apiKey.CreatedAt,
+                apiKey.ExpiresAt
             ),
             token
         ));
@@ -193,9 +198,9 @@ public static class SettingsEndpoints
         return TypedResults.Ok();
     }
 
-    internal sealed record PenaltySettingsResponse(bool IsPenaltyEnabled, int PenaltyAmountCents, int AccumulatedPenaltyCents);
+    internal sealed record PenaltySettingsResponse(bool IsPenaltyEnabled, int PenaltyAmountCents);
     internal sealed record UpdatePenaltyRequest(bool IsPenaltyEnabled, int PenaltyAmountCents);
-    internal sealed record ApiKeyResponse(string Id, string Name, string Prefix, DateTimeOffset CreatedAt);
-    internal sealed record CreateApiKeyRequest(string Name);
+    internal sealed record ApiKeyResponse(string Id, string Name, string Prefix, DateTimeOffset CreatedAt, DateTimeOffset? ExpiresAt);
+    internal sealed record CreateApiKeyRequest(string Name, int? ExpiresInDays = null);
     internal sealed record CreateApiKeyResponse(ApiKeyResponse KeyDetails, string Token);
 }
