@@ -37,9 +37,10 @@ public static class GroupEndpoints
             .OrderByDescending(gu => gu.Group.UpdatedAt)
             .Select(gu => new GroupSummaryResponse(
                 gu.GroupId,
-                gu.Group.GroupUsers.Select(m => new GroupMemberResponse(m.UserId, m.User.FirstName, m.User.LastName, m.User.Image, m.LeftAt != null)).ToList(),
+                gu.Group.GroupUsers.Select(m => new GroupMemberResponse(m.UserId, m.User.FirstName, m.User.LastName, m.User.Image, m.LeftAt != null, m.User.VenmoHandle, m.User.CashAppHandle, m.User.PayPalHandle)).ToList(),
                 gu.Group.StreakCount,
-                gu.Group.UpdatedAt
+                gu.Group.UpdatedAt,
+                gu.AccumulatedPenaltyCents
             ))
             .ToListAsync();
 
@@ -73,7 +74,8 @@ public static class GroupEndpoints
             group.Id,
             [memberResponse],
             group.StreakCount,
-            group.UpdatedAt
+            group.UpdatedAt,
+            0 // AccumulatedPenaltyCents is initially 0
         ));
     }
 
@@ -95,7 +97,7 @@ public static class GroupEndpoints
         if (!group.GroupUsers.Any(gu => gu.UserId == userId && gu.LeftAt == null))
             return TypedResults.NotFound(new UserEndpoints.ErrorResponse("Group not found."));
 
-        var members = group.GroupUsers.Select(m => new GroupMemberResponse(m.UserId, m.User.FirstName, m.User.LastName, m.User.Image, m.LeftAt != null)).ToList();
+        var members = group.GroupUsers.Select(m => new GroupMemberResponse(m.UserId, m.User.FirstName, m.User.LastName, m.User.Image, m.LeftAt != null, m.User.VenmoHandle, m.User.CashAppHandle, m.User.PayPalHandle)).ToList();
 
         return TypedResults.Ok(new GroupDetailsResponse(group.Id, members, group.StreakCount, group.CreatedAt, group.UpdatedAt));
     }
@@ -249,7 +251,7 @@ public static class GroupEndpoints
 
     internal sealed record InviteUserRequest(string FriendCode);
     internal sealed record InviteCreatedResponse(Guid InviteId);
-    internal sealed record GroupMemberResponse(string UserId, string? FirstName, string? LastName, string? Image, bool HasLeft);
-    internal sealed record GroupSummaryResponse(Guid Id, List<GroupMemberResponse> Members, int StreakCount, DateTimeOffset UpdatedAt);
+    internal sealed record GroupMemberResponse(string UserId, string? FirstName, string? LastName, string? Image, bool HasLeft, string? VenmoHandle = null, string? CashAppHandle = null, string? PayPalHandle = null);
+    internal sealed record GroupSummaryResponse(Guid Id, List<GroupMemberResponse> Members, int StreakCount, DateTimeOffset UpdatedAt, int AccumulatedPenaltyCents);
     internal sealed record GroupDetailsResponse(Guid Id, List<GroupMemberResponse> Members, int StreakCount, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt);
 }

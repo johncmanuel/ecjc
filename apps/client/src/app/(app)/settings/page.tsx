@@ -1,74 +1,454 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import SettingsRow  from "@/components/streak/SettingsRow";
 import SignOutButton from "@/components/ui/SignOutButton";
-import AmountStepper from "@/components/payment/AmountStepper";
-import StripeSetup from "@/components/payment/StripeSetup";
+import SettlementModal from "@/components/streak/SettlementModal";
+import { useGroups } from "@/components/GroupProvider";
 import { useApi } from "@/hooks/useApi";
+import { UserProfileResponse, ApiKeyResponse } from "@/lib/api";
+import { Copy, Trash2, KeyRound, Save, Loader2, Check, ChevronDown } from "lucide-react";
 
 export default function SettingsPage() {
-  const [reminder, setReminder] = useState(true);
+  const { activeGroup, refreshGroups } = useGroups();
   const [moneyPledge, setMoneyPledge] = useState(false);
-  const [penaltyAmount, setPenaltyAmount] = useState(5);
+  const accumulatedPenalty = activeGroup?.accumulatedPenaltyCents ? activeGroup.accumulatedPenaltyCents / 100 : 0;
+  const [isSettlementModalOpen, setIsSettlementModalOpen] = useState(false);
+  
+  const [profile, setProfile] = useState<UserProfileResponse | null>(null);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editFirstName, setEditFirstName] = useState("");
+  const [editLastName, setEditLastName] = useState("");
+  const [editName, setEditName] = useState("");
+  
+  const [editVenmo, setEditVenmo] = useState("");
+  const [editCashApp, setEditCashApp] = useState("");
+  const [editPayPal, setEditPayPal] = useState("");
+
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+  const [apiKeys, setApiKeys] = useState<ApiKeyResponse[]>([]);
+  const [newKeyName, setNewKeyName] = useState("");
+  const [newKeyExpiresIn, setNewKeyExpiresIn] = useState<number | "">("");
+  const [generatedToken, setGeneratedToken] = useState<string | null>(null);
+  const [isGeneratingKey, setIsGeneratingKey] = useState(false);
+  const [copied, setCopied] = useState(false);
+
   const api = useApi();
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [profileRes, keysRes, penaltyRes] = await Promise.all([
+          api.getMe(),
+          api.getApiSettingsApiKeys(),
+          api.getApiSettingsPenalty().catch(() => null)
+        ]);
+
+        if (profileRes) {
+          setProfile(profileRes);
+          setEditFirstName(profileRes.firstName || "");
+          setEditLastName(profileRes.lastName || "");
+          setEditName(profileRes.firstName ? `${profileRes.firstName} ${profileRes.lastName}`.trim() : (profileRes.name || ""));
+          setEditVenmo(profileRes.venmoHandle || "");
+          setEditCashApp(profileRes.cashAppHandle || "");
+          setEditPayPal(profileRes.payPalHandle || "");
+        }
+
+        if (keysRes) setApiKeys(keysRes);
+
+        if (penaltyRes) {
+          setMoneyPledge(penaltyRes.isPenaltyEnabled);
+        }
+      } catch (e) {
+        console.error("Failed to load settings data", e);
+      }
+    };
+    
+    fetchData();
+  }, [api]);
 
   const handleTogglePledge = async (v: boolean) => {
     setMoneyPledge(v);
     try {
-      await api.postApiSettingsPenalty({ isPenaltyEnabled: v, penaltyAmountCents: penaltyAmount * 100 });
+      await api.postApiSettingsPenalty({ isPenaltyEnabled: v, penaltyAmountCents: 500 });
     } catch (e) {
       console.error(e);
+      setMoneyPledge(!v); // Revert on failure
     }
   };
 
-  const handleAmountChange = async (next: number) => {
-    const capped = Math.min(Math.max(5, next), 20);
-    setPenaltyAmount(capped);
+  const handleSaveProfile = async () => {
+    setIsSavingProfile(true);
+    try {
+      const updated = await api.updateMe({
+        firstName: editFirstName,
+        lastName: editLastName,
+        name: editName,
+        venmoHandle: editVenmo,
+        cashAppHandle: editCashApp,
+        payPalHandle: editPayPal
+      });
+      setProfile(updated);
+      setIsEditingProfile(false);
+    } catch (e) {
+      console.error("Failed to update profile", e);
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  const handleCreateApiKey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newKeyName.trim()) return;
     
-    if (moneyPledge) {
-      try {
-        await api.postApiSettingsPenalty({ isPenaltyEnabled: moneyPledge, penaltyAmountCents: capped * 100 });
-      } catch (e) {
-        console.error(e);
-      }
+    setIsGeneratingKey(true);
+    try {
+      const res = await api.postApiSettingsApiKeys({ 
+        name: newKeyName.trim(), 
+        expiresInDays: newKeyExpiresIn === "" ? undefined : newKeyExpiresIn
+      });
+      setApiKeys([...apiKeys, res.keyDetails]);
+      setGeneratedToken(res.token);
+      setNewKeyName("");
+      setNewKeyExpiresIn("");
+      setCopied(false);
+    } catch (e) {
+      console.error("Failed to create API key", e);
+    } finally {
+      setIsGeneratingKey(false);
+    }
+  };
+
+  const handleRevokeApiKey = async (id: string) => {
+    if (!confirm("Are you sure you want to revoke this API key? This action cannot be undone.")) return;
+    
+    try {
+      await api.deleteApiSettingsApiKeys(id);
+      setApiKeys(apiKeys.filter(k => k.id !== id));
+    } catch (e) {
+      console.error("Failed to revoke API key", e);
+    }
+  };
+
+  const handleCopyToken = () => {
+    if (generatedToken) {
+      navigator.clipboard.writeText(generatedToken);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
   return (
-    <div>
+    <div className="pb-20">
       <h1 className="font-serif text-3xl font-medium px-5 pt-8 pb-2 text-ink">Settings</h1>
 
-      <div className="px-4.5 mt-5">
-        <div className="text-[11px] uppercase tracking-wider text-ink-faint font-medium mb-2 px-1">
-          If a day is missed
-        </div>
-        <SettingsRow
-          title="Gentle reminder"
-          description="A nudge, nothing loud"
-          on={reminder}
-          onToggle={() => setReminder((v) => !v)}
-        />
-        <SettingsRow
-          title="Send a few dollars"
-          description="Optional, just for you"
-          on={moneyPledge}
-          onToggle={() => handleTogglePledge(!moneyPledge)}
-        />
+      <div className="px-4.5 mt-5 space-y-10">
         
-        {moneyPledge && (
-          <div className="mt-4 px-1 pb-4 border-b border-line">
-            <p className="text-sm text-ink-soft mb-3">Choose penalty amount (Max $20)</p>
-            <AmountStepper amount={penaltyAmount} onChange={handleAmountChange} step={1} />
-            
-            <StripeSetup />
+        <section>
+          <div className="text-[11px] uppercase tracking-wider text-ink-faint font-medium mb-3 px-1">
+            Profile Settings
           </div>
-        )}
-        
-        <div className="mt-8 px-1">
+          
+          <div className="bg-card border border-line rounded-xl overflow-hidden p-4">
+            {isEditingProfile ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-ink-faint mb-1">First Name</label>
+                    <input 
+                      type="text" 
+                      value={editFirstName} 
+                      onChange={(e) => setEditFirstName(e.target.value)}
+                      className="w-full bg-paper border border-line rounded-lg px-3 py-2 text-sm text-ink focus:outline-none focus:border-ink-soft transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-ink-faint mb-1">Last Name</label>
+                    <input 
+                      type="text" 
+                      value={editLastName} 
+                      onChange={(e) => setEditLastName(e.target.value)}
+                      className="w-full bg-paper border border-line rounded-lg px-3 py-2 text-sm text-ink focus:outline-none focus:border-ink-soft transition-colors"
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-xs font-medium text-ink-faint mb-1">Display Name / Pseudonym</label>
+                  <input 
+                    type="text" 
+                    value={editName} 
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="w-full bg-paper border border-line rounded-lg px-3 py-2 text-sm text-ink focus:outline-none focus:border-ink-soft transition-colors"
+                  />
+                </div>
+
+                <div className="pt-2 border-t border-line mt-4">
+                  <p className="text-xs text-ink-faint mb-3">Add your handles to easily receive penalties from friends.</p>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-ink-faint mb-1">Venmo Handle</label>
+                      <input 
+                        type="text" 
+                        placeholder="@username"
+                        value={editVenmo} 
+                        onChange={(e) => setEditVenmo(e.target.value)}
+                        className="w-full bg-paper border border-line rounded-lg px-3 py-2 text-sm text-ink focus:outline-none focus:border-ink-soft transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-ink-faint mb-1">Cash App Handle</label>
+                      <input 
+                        type="text" 
+                        placeholder="$cashtag"
+                        value={editCashApp} 
+                        onChange={(e) => setEditCashApp(e.target.value)}
+                        className="w-full bg-paper border border-line rounded-lg px-3 py-2 text-sm text-ink focus:outline-none focus:border-ink-soft transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-ink-faint mb-1">PayPal Handle</label>
+                      <input 
+                        type="text" 
+                        placeholder="username"
+                        value={editPayPal} 
+                        onChange={(e) => setEditPayPal(e.target.value)}
+                        className="w-full bg-paper border border-line rounded-lg px-3 py-2 text-sm text-ink focus:outline-none focus:border-ink-soft transition-colors"
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex justify-end space-x-2 pt-2">
+                  <button 
+                    onClick={() => {
+                      setIsEditingProfile(false);
+                      setEditFirstName(profile?.firstName || "");
+                      setEditLastName(profile?.lastName || "");
+                      setEditName(profile?.name || "");
+                      setEditVenmo(profile?.venmoHandle || "");
+                      setEditCashApp(profile?.cashAppHandle || "");
+                      setEditPayPal(profile?.payPalHandle || "");
+                    }}
+                    className="px-4 py-2 text-sm font-medium text-ink-soft hover:text-ink transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={handleSaveProfile}
+                    disabled={isSavingProfile}
+                    className="flex items-center px-4 py-2 text-sm font-medium bg-paper border border-line text-ink rounded-lg hover:border-ink-soft transition-colors disabled:opacity-50"
+                  >
+                    {isSavingProfile ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                    Save Changes
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <div>
+                    <h3 className="text-base font-medium text-ink">
+                      {profile?.firstName ? `${profile.firstName} ${profile.lastName}` : profile?.name || "Loading..."}
+                    </h3>
+                    <p className="text-sm text-ink-faint">
+                      {profile?.email}
+                    </p>
+                  </div>
+                  <button 
+                    onClick={() => setIsEditingProfile(true)}
+                    className="px-4 py-2 text-sm font-medium bg-paper border border-line rounded-lg hover:border-ink-soft transition-colors text-ink"
+                  >
+                    Edit
+                  </button>
+                </div>
+                <div className="pt-3 border-t border-line text-sm text-ink-faint">
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <span className="block text-[10px] uppercase font-medium mb-0.5">Venmo</span>
+                      <span className="text-ink">{profile?.venmoHandle || "Not set"}</span>
+                    </div>
+                    <div>
+                      <span className="block text-[10px] uppercase font-medium mb-0.5">Cash App</span>
+                      <span className="text-ink">{profile?.cashAppHandle || "Not set"}</span>
+                    </div>
+                    <div>
+                      <span className="block text-[10px] uppercase font-medium mb-0.5">PayPal</span>
+                      <span className="text-ink">{profile?.payPalHandle || "Not set"}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section>
+          <div className="text-[11px] uppercase tracking-wider text-ink-faint font-medium mb-2 px-1">
+            If a day is missed
+          </div>
+          <SettingsRow
+            title="Honor Code Penalty"
+            description={moneyPledge ? "You are committed to paying $5 if you miss a day" : "Enable to owe $5 to your friends if you fail"}
+            on={moneyPledge}
+            onToggle={() => handleTogglePledge(!moneyPledge)}
+          />
+          
+          {moneyPledge && accumulatedPenalty > 0 && (
+            <div className="px-1 mt-3 flex items-center justify-between">
+              <div className="flex items-center space-x-3 bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-lg w-full">
+                <span className="text-sm font-medium text-red-600 flex-1">
+                  Accumulated Debt: ${accumulatedPenalty.toFixed(2)}
+                </span>
+                <button 
+                  onClick={() => setIsSettlementModalOpen(true)}
+                  className="text-xs font-medium bg-red-500/5 border border-red-500/20 text-red-600 hover:bg-red-500/10 px-3 py-1.5 rounded-lg transition-colors shadow-sm"
+                >
+                  Mark as Settled
+                </button>
+              </div>
+            </div>
+          )}
+        </section>
+
+        <section>
+          <div className="flex items-center justify-between mb-3 px-1">
+            <div className="text-[11px] uppercase tracking-wider text-ink-faint font-medium">
+              Developer Settings
+            </div>
+          </div>
+          
+          <div className="bg-card border border-line rounded-xl p-5 space-y-6">
+            <div>
+              <h3 className="text-base font-medium text-ink mb-1 flex items-center">
+                <KeyRound className="w-4 h-4 mr-2 text-ink-soft" />
+                Personal Access Tokens
+              </h3>
+              <p className="text-sm text-ink-faint leading-relaxed">
+                Tokens you generate can be used to authenticate with the ECJC API. These tokens give an agent full access to your account data.
+              </p>
+            </div>
+
+            {generatedToken && (
+              <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4 mb-4">
+                <p className="text-sm text-green-700 font-medium mb-2">
+                  Key generated successfully! Copy this token now. You will not be able to see it again.
+                </p>
+                <div className="flex items-center space-x-2">
+                  <code className="flex-1 bg-paper border border-green-500/20 rounded-md px-3 py-2 text-sm font-mono text-green-800 break-all">
+                    {generatedToken}
+                  </code>
+                  <button 
+                    onClick={handleCopyToken}
+                    className="p-2 bg-paper border border-green-500/20 text-green-700 rounded-md hover:bg-green-500/10 transition-colors"
+                  >
+                    {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {apiKeys.length > 0 ? (
+              <div className="space-y-3">
+                {apiKeys.map(key => {
+                  const isExpired = key.expiresAt && new Date(key.expiresAt) < new Date();
+                  return (
+                    <div key={key.id} className="flex items-start justify-between p-3 bg-paper border border-line rounded-lg gap-2">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2">
+                          <p className={`text-sm font-medium ${isExpired ? 'text-ink-faint line-through' : 'text-ink'}`}>
+                            {key.name}
+                          </p>
+                          {isExpired && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] uppercase font-bold bg-red-500/10 text-red-600">
+                              Expired
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mt-1 text-xs text-ink-faint">
+                          <code className="px-1.5 py-0.5 bg-card border border-line rounded font-mono shrink-0">{key.prefix}</code>
+                          <span className="shrink-0">Created {new Date(key.createdAt).toLocaleDateString()}</span>
+                          {key.expiresAt ? (
+                            <span className="shrink-0">Expires {new Date(key.expiresAt).toLocaleDateString()}</span>
+                          ) : (
+                            <span className="shrink-0">Never expires</span>
+                          )}
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => handleRevokeApiKey(key.id)}
+                        className="p-2 -mt-1 -mr-1 text-red-500 hover:bg-red-500/10 rounded-md transition-colors shrink-0"
+                        title="Revoke Token"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-sm text-ink-faint italic px-1">
+                No API keys generated yet.
+              </div>
+            )}
+
+            <form onSubmit={handleCreateApiKey} className="pt-2">
+              <label className="block text-xs font-medium text-ink-faint mb-2">Create New Token</label>
+              <div className="flex flex-wrap items-center gap-2">
+                <input 
+                  type="text" 
+                  value={newKeyName}
+                  onChange={(e) => setNewKeyName(e.target.value)}
+                  placeholder="What's this token for?"
+                  className="flex-[1_1_200px] h-10 bg-paper border border-line rounded-lg px-3 text-sm text-ink focus:outline-none focus:border-ink-soft transition-colors"
+                />
+                <div className="flex items-center gap-2 flex-[1_1_auto]">
+                  <div className="relative flex-1">
+                    <select
+                      value={newKeyExpiresIn}
+                      onChange={(e) => setNewKeyExpiresIn(e.target.value === "" ? "" : Number(e.target.value))}
+                      className="w-full h-10 bg-paper border border-line rounded-lg pl-3 pr-8 text-sm text-ink focus:outline-none focus:border-ink-soft transition-colors appearance-none"
+                    >
+                      <option value="">Never expire</option>
+                      <option value="7">7 days</option>
+                      <option value="30">30 days</option>
+                      <option value="90">90 days</option>
+                      <option value="365">1 year</option>
+                    </select>
+                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-soft pointer-events-none" />
+                  </div>
+                  <button 
+                    type="submit"
+                    disabled={isGeneratingKey || !newKeyName.trim()}
+                    className="h-10 px-4 flex items-center justify-center text-sm font-medium bg-paper border border-line text-ink rounded-lg hover:border-ink-soft disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap transition-colors"
+                  >
+                    {isGeneratingKey ? "Generating..." : "Generate"}
+                  </button>
+                </div>
+              </div>
+            </form>
+            
+          </div>
+        </section>
+
+        <section className="px-1 pt-6">
           <SignOutButton />
-        </div>
+        </section>
       </div>
+
+      {activeGroup && (
+        <SettlementModal 
+          isOpen={isSettlementModalOpen}
+          onClose={() => setIsSettlementModalOpen(false)}
+          accumulatedDebt={accumulatedPenalty}
+          groupId={activeGroup.id!}
+          onSuccess={async () => {
+            await refreshGroups();
+            setIsSettlementModalOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -10,4 +10,6 @@ public class GroupUser
 
     public DateTimeOffset JoinedAt { get; set; }
     public DateTimeOffset? LeftAt { get; set; }
+
+    public int AccumulatedPenaltyCents { get; set; } = 0;
 }

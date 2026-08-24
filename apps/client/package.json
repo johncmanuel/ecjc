@@ -8,8 +8,6 @@
     "start": "next start"
   },
   "dependencies": {
-    "@stripe/react-stripe-js": "^6.8.1",
-    "@stripe/stripe-js": "^9.13.0",
     "better-auth": "^1.6.29",
     "centrifuge": "^5.7.1",
     "lucide-react": "^0.475.0",

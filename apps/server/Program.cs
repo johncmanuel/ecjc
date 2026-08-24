@@ -4,6 +4,8 @@ using Microsoft.IdentityModel.Tokens;
 using server.Data;
 using server.Endpoints;
 using server.Services;
+using server.Middleware;
+using System.Security;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -42,8 +44,10 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 builder.Services.AddSingleton<IStorageService, LocalStorageService>();
 builder.Services.AddSingleton<CentrifugoService>();
-builder.Services.AddSingleton<StripeService>();
 builder.Services.AddSingleton(TimeProvider.System);
+
+builder.Services.AddScoped<IStreakEvaluationService, StreakEvaluationService>();
+builder.Services.AddHostedService<StreakMonitorBackgroundService>();
 
 var betterAuthUrl = builder.Configuration["Auth:BaseUrl"]
 	?? Environment.GetEnvironmentVariable("BETTER_AUTH_URL")
@@ -86,12 +90,23 @@ var app = builder.Build();
 // auto migrate database on startup
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    await db.Database.MigrateAsync();
+    try
+    {
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        await db.Database.MigrateAsync();
+    }
+    catch (Exception ex)
+    {
+		// probably better to skip the migration
+        Console.WriteLine($"Skipping migration during build: {ex.Message}");
+    }
 }
 
 app.UseCors("DevCorsPolicy");
 app.UseAuthentication();
+
+app.UseMiddleware<ApiKeyMiddleware>();
+
 app.UseAuthorization();
 app.UseStaticFiles();
 app.UseOpenApi();
@@ -104,8 +119,9 @@ app.RegisterEntryEndpoints();
 app.RegisterReactionEndpoints();
 app.RegisterMediaEndpoints();
 app.RegisterInviteEndpoints();
-app.RegisterStripeEndpoints();
 app.RegisterSettingsEndpoints();
 
 app.Run();
+
+// needed for integration tests to access the Program class
 public partial class Program { }

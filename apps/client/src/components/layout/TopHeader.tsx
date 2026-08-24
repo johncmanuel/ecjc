@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Settings } from "lucide-react";
+import { Settings, UserPlus } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 import { GroupHeader } from "@/components/layout/GroupHeader";
 import { useScrollDirection } from "@/hooks/useScrollDirection";
@@ -32,7 +32,15 @@ export function TopHeader() {
       }`}
     >
       <GroupHeader />
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1">
+        <Link 
+          href="/invite" 
+          aria-label="Join New Group"
+          title="Join New Group"
+          className="p-2 text-ink-soft hover:text-ink transition-colors rounded-full hover:bg-black/5 dark:hover:bg-white/5"
+        >
+          <UserPlus size={20} />
+        </Link>
         <ThemeToggle />
         <Link 
           href="/settings" 
