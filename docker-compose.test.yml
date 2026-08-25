@@ -1,0 +1,78 @@
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: ecjc
+      POSTGRES_PASSWORD: ecjc
+      POSTGRES_DB: ecjc
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ecjc"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  centrifugo:
+    image: centrifugo/centrifugo:v5
+    env_file:
+      - .env.test
+    environment:
+      CENTRIFUGO_TOKEN_HMAC_SECRET_KEY: ${BETTER_AUTH_SECRET:-E0LgVKdIJ6P2hPdiRMlPwwtbEWIiU90xnY+SgeHCJYc=}
+      CENTRIFUGO_ADMIN_PASSWORD: ${CENTRIFUGO_ADMIN_PASSWORD:-admin}
+      CENTRIFUGO_ADMIN_SECRET: ${CENTRIFUGO_ADMIN_SECRET:-admin-secret}
+      CENTRIFUGO_API_KEY: ${CENTRIFUGO_HTTP_API_KEY:-centrifugo-dev-api-key}
+    command: centrifugo --health
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8000/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  server:
+    build:
+      context: ./apps/server
+      dockerfile: Dockerfile
+      args:
+        ENVIRONMENT: Release
+    env_file:
+      - .env.test
+    environment:
+      - ConnectionStrings__DefaultConnection=Host=db;Database=ecjc;Username=ecjc;Password=ecjc
+      - Auth__Secret=${BETTER_AUTH_SECRET:-E0LgVKdIJ6P2hPdiRMlPwwtbEWIiU90xnY+SgeHCJYc=}
+      - CENTRIFUGO_BASE_URL=http://centrifugo:8000
+      - BETTER_AUTH_URL=http://client:3000
+    ports:
+      - "5186:8080" # Expose the internal 8080 to host's 5186 if needed
+    depends_on:
+      db:
+        condition: service_healthy
+      centrifugo:
+        condition: service_healthy
+
+  client:
+    build:
+      context: .
+      dockerfile: ./apps/client/Dockerfile
+    env_file:
+      - .env.test
+    environment:
+      - NODE_ENV=production
+      - API_URL=${API_URL:-http://server:8080}
+      - BETTER_AUTH_URL=${BETTER_AUTH_URL:-http://localhost:3000}
+      - DATABASE_URL=postgres://ecjc:ecjc@db:5432/ecjc
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:-E0LgVKdIJ6P2hPdiRMlPwwtbEWIiU90xnY+SgeHCJYc=}
+      - NEXT_PUBLIC_CENTRIFUGO_URL=${NEXT_PUBLIC_CENTRIFUGO_URL:-ws://localhost:8000/connection/websocket}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - server
+
+volumes:
+  db_data:

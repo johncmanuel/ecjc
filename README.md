@@ -65,3 +65,21 @@ To run the server tests, run the following command from root:
 ```bash
 dotnet test apps/server.tests
 ```
+
+## Public HTTPS with Tailscale Funnel
+
+To expose the application to the internet with HTTPS support, use [Tailscale Funnel](https://tailscale.com/kb/1223/funnel).
+
+1. Ensure Tailscale is installed and Funnel is enabled on your tailnet.
+2. Update `.env` with your Tailscale URL (e.g., `https://your-machine.tailnet-name.ts.net`):
+   ```env
+   BETTER_AUTH_URL=https://your-machine.tailnet-name.ts.net
+   ```
+3. Start the application (e.g. using the test compose file):
+   ```bash
+   docker compose -f docker-compose.test.yml up -d
+   ```
+4. Start Tailscale Funnel on port 3000 (Next.js client port):
+   ```bash
+   tailscale funnel 3000
+   ```

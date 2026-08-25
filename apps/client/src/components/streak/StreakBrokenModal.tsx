@@ -44,7 +44,7 @@ export default function StreakBrokenModal() {
             something when that happens.
           </p>
 
-          <AmountStepper amount={amount} onChange={setAmount} />
+          <AmountStepper amount={amount} onChange={setAmount} className="mb-6" />
 
           <Button variant="thread-a" className="w-full">
             <span className="font-serif italic font-semibold">stripe</span>

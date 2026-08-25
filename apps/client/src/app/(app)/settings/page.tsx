@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import SettingsRow  from "@/components/streak/SettingsRow";
 import SignOutButton from "@/components/ui/SignOutButton";
 import SettlementModal from "@/components/streak/SettlementModal";
@@ -8,10 +8,13 @@ import { useGroups } from "@/components/GroupProvider";
 import { useApi } from "@/hooks/useApi";
 import { UserProfileResponse, ApiKeyResponse } from "@/lib/api";
 import { Copy, Trash2, KeyRound, Save, Loader2, Check, ChevronDown } from "lucide-react";
+import AmountStepper from "@/components/payment/AmountStepper";
 
 export default function SettingsPage() {
   const { activeGroup, refreshGroups } = useGroups();
   const [moneyPledge, setMoneyPledge] = useState(false);
+  const [penaltyAmount, setPenaltyAmount] = useState(5);
+  const penaltySaveTimeout = useRef<NodeJS.Timeout | null>(null);
   const accumulatedPenalty = activeGroup?.accumulatedPenaltyCents ? activeGroup.accumulatedPenaltyCents / 100 : 0;
   const [isSettlementModalOpen, setIsSettlementModalOpen] = useState(false);
   
@@ -49,7 +52,7 @@ export default function SettingsPage() {
           setProfile(profileRes);
           setEditFirstName(profileRes.firstName || "");
           setEditLastName(profileRes.lastName || "");
-          setEditName(profileRes.firstName ? `${profileRes.firstName} ${profileRes.lastName}`.trim() : (profileRes.name || ""));
+          setEditName(profileRes.firstName ? `${profileRes.firstName} ${profileRes.lastName}`.trim() : "");
           setEditVenmo(profileRes.venmoHandle || "");
           setEditCashApp(profileRes.cashAppHandle || "");
           setEditPayPal(profileRes.payPalHandle || "");
@@ -58,7 +61,10 @@ export default function SettingsPage() {
         if (keysRes) setApiKeys(keysRes);
 
         if (penaltyRes) {
-          setMoneyPledge(penaltyRes.isPenaltyEnabled);
+          setMoneyPledge(penaltyRes.isPenaltyEnabled ?? false);
+          if (penaltyRes.penaltyAmountCents) {
+            setPenaltyAmount(Math.max(1, Math.round(penaltyRes.penaltyAmountCents / 100)));
+          }
         }
       } catch (e) {
         console.error("Failed to load settings data", e);
@@ -71,12 +77,28 @@ export default function SettingsPage() {
   const handleTogglePledge = async (v: boolean) => {
     setMoneyPledge(v);
     try {
-      await api.postApiSettingsPenalty({ isPenaltyEnabled: v, penaltyAmountCents: 500 });
+      await api.postApiSettingsPenalty({ isPenaltyEnabled: v, penaltyAmountCents: penaltyAmount * 100 });
     } catch (e) {
       console.error(e);
       setMoneyPledge(!v); // Revert on failure
     }
   };
+
+  const handleChangePenaltyAmount = useCallback((newAmount: number) => {
+    setPenaltyAmount(newAmount);
+    
+    if (penaltySaveTimeout.current) {
+      clearTimeout(penaltySaveTimeout.current);
+    }
+    
+    penaltySaveTimeout.current = setTimeout(async () => {
+      try {
+        await api.postApiSettingsPenalty({ isPenaltyEnabled: moneyPledge, penaltyAmountCents: newAmount * 100 });
+      } catch (e) {
+        console.error("Failed to update penalty amount", e);
+      }
+    }, 500);
+  }, [api, moneyPledge]);
 
   const handleSaveProfile = async () => {
     setIsSavingProfile(true);
@@ -108,8 +130,10 @@ export default function SettingsPage() {
         name: newKeyName.trim(), 
         expiresInDays: newKeyExpiresIn === "" ? undefined : newKeyExpiresIn
       });
-      setApiKeys([...apiKeys, res.keyDetails]);
-      setGeneratedToken(res.token);
+      if (res.keyDetails && res.token) {
+        setApiKeys([...apiKeys, res.keyDetails]);
+        setGeneratedToken(res.token);
+      }
       setNewKeyName("");
       setNewKeyExpiresIn("");
       setCopied(false);
@@ -226,7 +250,7 @@ export default function SettingsPage() {
                       setIsEditingProfile(false);
                       setEditFirstName(profile?.firstName || "");
                       setEditLastName(profile?.lastName || "");
-                      setEditName(profile?.name || "");
+                      setEditName(profile?.firstName ? `${profile.firstName} ${profile.lastName}`.trim() : "");
                       setEditVenmo(profile?.venmoHandle || "");
                       setEditCashApp(profile?.cashAppHandle || "");
                       setEditPayPal(profile?.payPalHandle || "");
@@ -250,7 +274,7 @@ export default function SettingsPage() {
                 <div className="flex justify-between items-center mb-4">
                   <div>
                     <h3 className="text-base font-medium text-ink">
-                      {profile?.firstName ? `${profile.firstName} ${profile.lastName}` : profile?.name || "Loading..."}
+                      {profile?.firstName ? `${profile.firstName} ${profile.lastName}` : "Loading..."}
                     </h3>
                     <p className="text-sm text-ink-faint">
                       {profile?.email}
@@ -290,10 +314,17 @@ export default function SettingsPage() {
           </div>
           <SettingsRow
             title="Honor Code Penalty"
-            description={moneyPledge ? "You are committed to paying $5 if you miss a day" : "Enable to owe $5 to your friends if you fail"}
+            description={moneyPledge ? `You are committed to paying $${penaltyAmount} if you miss a day` : `Enable to owe $${penaltyAmount} to your friends if you fail`}
             on={moneyPledge}
             onToggle={() => handleTogglePledge(!moneyPledge)}
           />
+
+          {moneyPledge && (
+            <div className="px-3 mt-4 flex items-center justify-between">
+              <span className="text-sm font-medium text-ink-soft">Penalty Amount</span>
+              <AmountStepper amount={penaltyAmount} onChange={handleChangePenaltyAmount} />
+            </div>
+          )}
           
           {moneyPledge && accumulatedPenalty > 0 && (
             <div className="px-1 mt-3 flex items-center justify-between">
@@ -368,7 +399,7 @@ export default function SettingsPage() {
                         </div>
                         <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mt-1 text-xs text-ink-faint">
                           <code className="px-1.5 py-0.5 bg-card border border-line rounded font-mono shrink-0">{key.prefix}</code>
-                          <span className="shrink-0">Created {new Date(key.createdAt).toLocaleDateString()}</span>
+                          <span className="shrink-0">Created {new Date(key.createdAt!).toLocaleDateString()}</span>
                           {key.expiresAt ? (
                             <span className="shrink-0">Expires {new Date(key.expiresAt).toLocaleDateString()}</span>
                           ) : (
@@ -377,7 +408,7 @@ export default function SettingsPage() {
                         </div>
                       </div>
                       <button 
-                        onClick={() => handleRevokeApiKey(key.id)}
+                        onClick={() => handleRevokeApiKey(key.id!)}
                         className="p-2 -mt-1 -mr-1 text-red-500 hover:bg-red-500/10 rounded-md transition-colors shrink-0"
                         title="Revoke Token"
                       >
