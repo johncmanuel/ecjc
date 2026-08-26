@@ -10,12 +10,21 @@ const backendUrl =
 		? (process.env.API_URL ?? "")
 		: "http://localhost:5186";
 
+const centrifugoUrl =
+	process.env.NODE_ENV === "production"
+		? "http://centrifugo:8000"
+		: "http://localhost:8000";
+
 const nextConfig: NextConfig = {
 	turbopack: {
 		root: path.resolve(__dirname, "../../"),
 	},
 	async rewrites() {
 		return [
+			{
+				source: "/connection/:path*",
+				destination: `${centrifugoUrl}/connection/:path*`,
+			},
 			{
 				source: "/health",
 				destination: `${backendUrl}/health`,

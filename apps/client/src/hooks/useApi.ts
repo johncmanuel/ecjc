@@ -4,7 +4,7 @@ import { authClient } from '@/lib/auth-client';
 
 export function useApi() {
   const apiClient = useMemo(() => {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5186";
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
 
     return new ApiClient(baseUrl, {
       fetch: async (url, options) => {

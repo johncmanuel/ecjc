@@ -31,7 +31,10 @@ export function useCentrifugo(onEvent?: EventHandler) {
   const connect = useCallback(async () => {
     if (centrifugeRef.current) return;
 
-    const centrifugoUrl = process.env.NEXT_PUBLIC_CENTRIFUGO_URL || "ws://localhost:8000/connection/websocket";
+    const defaultUrl = typeof window !== 'undefined' 
+      ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/connection/websocket`
+      : "ws://localhost:8000/connection/websocket";
+    const centrifugoUrl = process.env.NEXT_PUBLIC_CENTRIFUGO_URL || defaultUrl;
 
     const centrifuge = new Centrifuge(centrifugoUrl, {
       getToken: async () => {
