@@ -53,40 +53,62 @@ jobs:
         run: |
           echo "OWNER=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_ENV
 
-      - name: Build Client Image (Cached)
-        run: |
-          docker buildx build \
-            --platform linux/amd64,linux/arm64 \
-            --build-arg API_URL=http://server:8080 \
-            -t ghcr.io/${{ env.OWNER }}/ecjc-client:latest \
-            -t ghcr.io/${{ env.OWNER }}/ecjc-client:${{ github.sha }} \
-            -f apps/client/Dockerfile .
+      - name: Build Client Image (Cached, No Push)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: apps/client/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            API_URL=http://server:8080
+          tags: |
+            ghcr.io/${{ env.OWNER }}/ecjc-client:latest
+            ghcr.io/${{ env.OWNER }}/ecjc-client:${{ github.sha }}
+          push: false
+          cache-from: type=gha,scope=client
+          cache-to: type=gha,mode=max,scope=client
 
-      - name: Build Server Image (Cached)
-        run: |
-          docker buildx build \
-            --platform linux/amd64,linux/arm64 \
-            --build-arg ENVIRONMENT=Release \
-            -t ghcr.io/${{ env.OWNER }}/ecjc-server:latest \
-            -t ghcr.io/${{ env.OWNER }}/ecjc-server:${{ github.sha }} \
-            -f apps/server/Dockerfile apps/server
+      - name: Build Server Image (Cached, No Push)
+        uses: docker/build-push-action@v5
+        with:
+          context: apps/server
+          file: apps/server/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            ENVIRONMENT=Release
+          tags: |
+            ghcr.io/${{ env.OWNER }}/ecjc-server:latest
+            ghcr.io/${{ env.OWNER }}/ecjc-server:${{ github.sha }}
+          push: false
+          cache-from: type=gha,scope=server
+          cache-to: type=gha,mode=max,scope=server
+
+      # only push once both images build successfully
 
       - name: Push Client Image
-        run: |
-          docker buildx build \
-            --platform linux/amd64,linux/arm64 \
-            --build-arg API_URL=http://server:8080 \
-            -t ghcr.io/${{ env.OWNER }}/ecjc-client:latest \
-            -t ghcr.io/${{ env.OWNER }}/ecjc-client:${{ github.sha }} \
-            -f apps/client/Dockerfile . \
-            --push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: apps/client/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            API_URL=http://server:8080
+          tags: |
+            ghcr.io/${{ env.OWNER }}/ecjc-client:latest
+            ghcr.io/${{ env.OWNER }}/ecjc-client:${{ github.sha }}
+          push: true
+          cache-from: type=gha,scope=client
 
       - name: Push Server Image
-        run: |
-          docker buildx build \
-            --platform linux/amd64,linux/arm64 \
-            --build-arg ENVIRONMENT=Release \
-            -t ghcr.io/${{ env.OWNER }}/ecjc-server:latest \
-            -t ghcr.io/${{ env.OWNER }}/ecjc-server:${{ github.sha }} \
-            -f apps/server/Dockerfile apps/server \
-            --push
+        uses: docker/build-push-action@v5
+        with:
+          context: apps/server
+          file: apps/server/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            ENVIRONMENT=Release
+          tags: |
+            ghcr.io/${{ env.OWNER }}/ecjc-server:latest
+            ghcr.io/${{ env.OWNER }}/ecjc-server:${{ github.sha }}
+          push: true
+          cache-from: type=gha,scope=server
