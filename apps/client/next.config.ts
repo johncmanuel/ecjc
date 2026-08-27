@@ -5,15 +5,13 @@ import { loadEnvConfig } from "@next/env";
 // Load environment variables from the root workspace directory
 loadEnvConfig(path.resolve(process.cwd(), "../../"));
 
-const backendUrl =
-	process.env.NODE_ENV === "production"
-		? (process.env.API_URL ?? "")
-		: "http://localhost:5186";
+const backendUrl = process.env.API_URL || "http://localhost:5186";
 
 const centrifugoUrl =
-	process.env.NODE_ENV === "production"
-		? "http://centrifugo:8000"
-		: "http://localhost:8000";
+  process.env.CENTRIFUGO_URL ||
+  (process.env.NODE_ENV === "development"
+    ? "http://localhost:8000"
+    : "http://centrifugo:8000");
 
 const nextConfig: NextConfig = {
 	turbopack: {

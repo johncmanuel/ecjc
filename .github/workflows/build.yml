@@ -60,7 +60,8 @@ jobs:
           file: apps/client/Dockerfile
           platforms: linux/amd64,linux/arm64
           build-args: |
-            API_URL=http://server:8080
+            API_URL=http://ecjc-server:8080
+            CENTRIFUGO_URL=http://ecjc-centrifugo:8000
           tags: |
             ghcr.io/${{ env.OWNER }}/ecjc-client:latest
             ghcr.io/${{ env.OWNER }}/ecjc-client:${{ github.sha }}
@@ -92,7 +93,8 @@ jobs:
           file: apps/client/Dockerfile
           platforms: linux/amd64,linux/arm64
           build-args: |
-            API_URL=http://server:8080
+            API_URL=http://ecjc-server:8080
+            CENTRIFUGO_URL=http://ecjc-centrifugo:8000
           tags: |
             ghcr.io/${{ env.OWNER }}/ecjc-client:latest
             ghcr.io/${{ env.OWNER }}/ecjc-client:${{ github.sha }}

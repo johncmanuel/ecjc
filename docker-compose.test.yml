@@ -60,6 +60,7 @@ services:
       dockerfile: ./apps/client/Dockerfile
       args:
         - API_URL=http://server:8080
+        - CENTRIFUGO_URL=http://centrifugo:8000
     env_file:
       - .env.test
     environment:

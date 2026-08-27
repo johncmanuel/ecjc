@@ -18,6 +18,8 @@ COPY --from=deps /app/apps/client/node_modules ./apps/client/node_modules
 COPY . .
 ARG API_URL
 ENV API_URL=$API_URL
+ARG CENTRIFUGO_URL
+ENV CENTRIFUGO_URL=$CENTRIFUGO_URL
 RUN npm run build -w client
 
 FROM base AS runner
