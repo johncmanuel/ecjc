@@ -36,6 +36,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -50,17 +53,19 @@ jobs:
         run: |
           echo "OWNER=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_ENV
 
-      - name: Build Client Image
+      - name: Build Client Image (Cached)
         run: |
-          docker build \
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
             --build-arg API_URL=http://server:8080 \
             -t ghcr.io/${{ env.OWNER }}/ecjc-client:latest \
             -t ghcr.io/${{ env.OWNER }}/ecjc-client:${{ github.sha }} \
             -f apps/client/Dockerfile .
 
-      - name: Build Server Image
+      - name: Build Server Image (Cached)
         run: |
-          docker build \
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
             --build-arg ENVIRONMENT=Release \
             -t ghcr.io/${{ env.OWNER }}/ecjc-server:latest \
             -t ghcr.io/${{ env.OWNER }}/ecjc-server:${{ github.sha }} \
@@ -68,10 +73,20 @@ jobs:
 
       - name: Push Client Image
         run: |
-          docker push ghcr.io/${{ env.OWNER }}/ecjc-client:latest
-          docker push ghcr.io/${{ env.OWNER }}/ecjc-client:${{ github.sha }}
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            --build-arg API_URL=http://server:8080 \
+            -t ghcr.io/${{ env.OWNER }}/ecjc-client:latest \
+            -t ghcr.io/${{ env.OWNER }}/ecjc-client:${{ github.sha }} \
+            -f apps/client/Dockerfile . \
+            --push
 
       - name: Push Server Image
         run: |
-          docker push ghcr.io/${{ env.OWNER }}/ecjc-server:latest
-          docker push ghcr.io/${{ env.OWNER }}/ecjc-server:${{ github.sha }}
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            --build-arg ENVIRONMENT=Release \
+            -t ghcr.io/${{ env.OWNER }}/ecjc-server:latest \
+            -t ghcr.io/${{ env.OWNER }}/ecjc-server:${{ github.sha }} \
+            -f apps/server/Dockerfile apps/server \
+            --push
