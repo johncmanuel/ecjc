@@ -24,6 +24,7 @@ services:
       CENTRIFUGO_ADMIN_PASSWORD: ${CENTRIFUGO_ADMIN_PASSWORD:-admin}
       CENTRIFUGO_ADMIN_SECRET: ${CENTRIFUGO_ADMIN_SECRET:-admin-secret}
       CENTRIFUGO_API_KEY: ${CENTRIFUGO_HTTP_API_KEY:-centrifugo-dev-api-key}
+      CENTRIFUGO_ALLOWED_ORIGINS: ${BETTER_AUTH_URL:-http://localhost:3000}
     command: centrifugo --health
     ports:
       - "8000:8000"
