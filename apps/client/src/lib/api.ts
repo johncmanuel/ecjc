@@ -27,6 +27,8 @@ export interface IApiClient {
 
     reinviteUser(id: string, signal?: AbortSignal): Promise<InviteCreatedResponse>;
 
+    searchEntries(groupId: string, q: string, skip: number, take: number, signal?: AbortSignal): Promise<PaginatedEntriesResponse>;
+
     getEntries(groupId: string, skip: number, take: number, signal?: AbortSignal): Promise<PaginatedEntriesResponse>;
 
     createEntry(groupId: string, request: CreateEntryRequest, signal?: AbortSignal): Promise<EntryResponse>;
@@ -436,6 +438,67 @@ export class ApiClient implements IApiClient {
             });
         }
         return Promise.resolve<InviteCreatedResponse>(null as any);
+    }
+
+    searchEntries(groupId: string, q: string, skip: number, take: number, signal?: AbortSignal): Promise<PaginatedEntriesResponse> {
+        let url_ = this.baseUrl + "/api/groups/{groupId}/entries/search?";
+        if (groupId === undefined || groupId === null)
+            throw new globalThis.Error("The parameter 'groupId' must be defined.");
+        url_ = url_.replace("{groupId}", encodeURIComponent("" + groupId));
+        if (q === undefined || q === null)
+            throw new globalThis.Error("The parameter 'q' must be defined and cannot be null.");
+        else
+            url_ += "q=" + encodeURIComponent("" + q) + "&";
+        if (skip === undefined || skip === null)
+            throw new globalThis.Error("The parameter 'skip' must be defined and cannot be null.");
+        else
+            url_ += "skip=" + encodeURIComponent("" + skip) + "&";
+        if (take === undefined || take === null)
+            throw new globalThis.Error("The parameter 'take' must be defined and cannot be null.");
+        else
+            url_ += "take=" + encodeURIComponent("" + take) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            signal,
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processSearchEntries(_response);
+        });
+    }
+
+    protected processSearchEntries(response: Response): Promise<PaginatedEntriesResponse> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as PaginatedEntriesResponse;
+            return result200;
+            });
+        } else if (status === 400) {
+            return response.text().then((_responseText) => {
+            let result400: any = null;
+            result400 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as ErrorResponse;
+            return throwException("A server side error occurred.", status, _responseText, _headers, result400);
+            });
+        } else if (status === 404) {
+            return response.text().then((_responseText) => {
+            let result404: any = null;
+            result404 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as ErrorResponse;
+            return throwException("A server side error occurred.", status, _responseText, _headers, result404);
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<PaginatedEntriesResponse>(null as any);
     }
 
     getEntries(groupId: string, skip: number, take: number, signal?: AbortSignal): Promise<PaginatedEntriesResponse> {

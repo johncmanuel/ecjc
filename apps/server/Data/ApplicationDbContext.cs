@@ -26,6 +26,11 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     {
         base.OnModelCreating(modelBuilder);
 
+        if (Database.IsNpgsql())
+        {
+            modelBuilder.HasPostgresExtension("pg_trgm");
+        }
+
         // https://better-auth.com/docs/concepts/database#core-schema
         modelBuilder.Entity<User>(e =>
         {
@@ -132,6 +137,26 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             e.HasKey(en => en.Id);
             e.Property(en => en.Id).HasDefaultValueSql("gen_random_uuid()");
             e.Property(en => en.TextContent).IsRequired();
+            
+            if (Database.IsNpgsql())
+            {
+                e.HasGeneratedTsVectorColumn(
+                    en => en.SearchVector,
+                    "english",
+                    en => new { en.TextContent })
+                 .HasIndex(en => en.SearchVector)
+                 .HasMethod("GIN");
+
+                // GIN trigram index for fuzzy search via pg_trgm
+                e.HasIndex(en => en.TextContent)
+                 .HasMethod("GIN")
+                 .HasOperators("gin_trgm_ops");
+            }
+            else
+            {
+                e.Ignore(en => en.SearchVector);
+            }
+
             e.HasOne(en => en.Author)
                 .WithMany(u => u.Entries)
                 .HasForeignKey(en => en.AuthorId)

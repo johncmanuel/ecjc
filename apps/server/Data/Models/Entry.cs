@@ -6,6 +6,7 @@ public class Entry
     public string TextContent { get; set; } = string.Empty;
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
+    public NpgsqlTypes.NpgsqlTsVector? SearchVector { get; set; }
 
     public string AuthorId { get; set; } = string.Empty;
     public User Author { get; set; } = null!;

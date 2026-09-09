@@ -14,9 +14,10 @@ type EntryCardProps = {
   media?: MediaResponse[];
   reactions?: ReactionResponse[];
   currentUserId: string;
+  searchHighlight?: string;
 };
 
-export default function EntryCard({ id, author, authorName, time, text, media, reactions, currentUserId }: EntryCardProps) {
+export default function EntryCard({ id, author, authorName, time, text, media, reactions, currentUserId, searchHighlight }: EntryCardProps) {
   const [selectedMediaIndex, setSelectedMediaIndex] = useState<number | null>(null);
   const [localReactions, setLocalReactions] = useState<ReactionResponse[]>(reactions || []);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -68,6 +69,20 @@ export default function EntryCard({ id, author, authorName, time, text, media, r
     return acc;
   }, {} as Record<string, ReactionResponse[]>);
 
+  const renderText = () => {
+    if (!searchHighlight || !searchHighlight.trim()) {
+      return text;
+    }
+    
+    // Split on the search query, case-insensitive
+    const regex = new RegExp(`(${searchHighlight})`, 'gi');
+    const parts = text.split(regex);
+    
+    return parts.map((part, i) => 
+      regex.test(part) ? <mark key={i} className="bg-yellow-200 dark:bg-yellow-800 text-inherit rounded-sm px-0.5">{part}</mark> : part
+    );
+  };
+
   return (
     <div className="flex gap-3 mb-4">
       <ThreadLine author={author} />
@@ -82,7 +97,7 @@ export default function EntryCard({ id, author, authorName, time, text, media, r
           </span>
           <span className="text-[11px] text-ink-faint">{time}</span>
         </div>
-        <p className="font-serif text-[15px] leading-relaxed text-ink">{text}</p>
+        <p className="font-serif text-[15px] leading-relaxed text-ink whitespace-pre-wrap">{renderText()}</p>
         {media && media.length > 0 && (
           <div className={`mt-2 grid gap-2 ${media.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
             {media.map((m, idx) => {

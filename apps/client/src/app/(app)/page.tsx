@@ -7,7 +7,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { EntryResponse, UserProfileResponse } from "@/lib/api";
 import { useGroups } from "@/components/GroupProvider";
 import { useApi } from "@/hooks/useApi";
-import { LogOut, UserPlus, Loader2 } from "lucide-react";
+import { LogOut, UserPlus, Loader2, Search } from "lucide-react";
 import { useScrollDirection } from "@/hooks/useScrollDirection";
 
 export default function TimelinePage() {
@@ -27,6 +27,16 @@ export default function TimelinePage() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const observerTarget = useRef<HTMLDivElement>(null);
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
   // TODO: improve typing for the group members and entries, and handle cases where the data might be incomplete or missing.
 
   useEffect(() => {
@@ -43,11 +53,13 @@ export default function TimelinePage() {
       try {
         const [meData, entriesData] = await Promise.all([
           api.getMe(),
-          api.getEntries(activeGroup!.id!, 0, 50)
+          debouncedSearch
+            ? api.searchEntries(activeGroup!.id!, debouncedSearch, 0, 50)
+            : api.getEntries(activeGroup!.id!, 0, 50)
         ]);
         setMe(meData);
         setEntries(entriesData.items || []);
-        if (process.env.NODE_ENV !== 'production') {
+        if (process.env.NODE_ENV !== 'production' && !debouncedSearch) {
           setHasMore(true); // Force true in dev so the mock generator can run
         } else {
           setHasMore((entriesData.items || []).length === 50);
@@ -60,7 +72,7 @@ export default function TimelinePage() {
     }
     
     fetchEntries();
-  }, [activeGroup, api]);
+  }, [activeGroup, api, debouncedSearch]);
 
   // Infinite scroll logic
   const loadMore = useCallback(async () => {
@@ -86,7 +98,9 @@ export default function TimelinePage() {
           reactions: []
         }));
       } else {
-        const data = await api.getEntries(activeGroup.id!, skip, take);
+        const data = debouncedSearch
+          ? await api.searchEntries(activeGroup.id!, debouncedSearch, skip, take)
+          : await api.getEntries(activeGroup.id!, skip, take);
         newItems = data.items || [];
       }
 
@@ -107,7 +121,7 @@ export default function TimelinePage() {
     } finally {
       setIsLoadingMore(false);
     }
-  }, [activeGroup, api, entries.length, hasMore, isLoadingMore, me?.id]);
+  }, [activeGroup, api, entries.length, hasMore, isLoadingMore, me?.id, debouncedSearch]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -164,12 +178,24 @@ export default function TimelinePage() {
   return (
     <main className="pb-24">
       <header 
-        className="sticky top-[69px] z-40 bg-paper border-b border-line px-4 py-3 flex items-center justify-center mb-4 transition-transform duration-300"
+        className="sticky top-[69px] z-40 bg-paper border-b border-line px-4 py-3 flex flex-col gap-3 mb-4 transition-transform duration-300"
         style={{ transform: scrollDirection === "down" ? "translateY(calc(-100% - 69px))" : "translateY(0)" }}
       >
-        <div className="flex items-baseline gap-1.5">
+        <div className="flex items-baseline justify-center gap-1.5">
           <span className="font-serif text-xl font-medium">{activeGroup.streakCount}</span>
           <span className="text-sm text-ink-soft">days sharing something, together</span>
+        </div>
+        <div className="relative max-w-sm w-full mx-auto">
+          <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+            <Search className="h-4 w-4 text-ink-soft" />
+          </div>
+          <input
+            type="text"
+            placeholder="Search entries..."
+            className="w-full bg-black/5 dark:bg-white/5 border-none rounded-full py-1.5 pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-ink/20"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
       </header>
 
@@ -229,6 +255,7 @@ export default function TimelinePage() {
                   media={entry.media || []}
                   reactions={entry.reactions || []}
                   currentUserId={me?.id || ""}
+                  searchHighlight={debouncedSearch}
                 />
               );
             })}

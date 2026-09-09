@@ -12,9 +12,11 @@ public static class EntryEndpoints
     private static readonly int _minWordCount = 10;
     private static readonly int _maxWordCount = 10000;
 
+
     public static void RegisterEntryEndpoints(this WebApplication app)
     {
         var groupEndpoints = app.MapGroup("/api/groups/{groupId:guid}/entries").WithTags("Group Entries").RequireAuthorization();
+        groupEndpoints.MapGet("/search", SearchEntries).WithName("SearchEntries");
         groupEndpoints.MapGet("/", GetEntries).WithName("GetEntries");
         groupEndpoints.MapPost("/", CreateEntry).WithName("CreateEntry");
 
@@ -39,11 +41,75 @@ public static class EntryEndpoints
         var isMember = await db.GroupUsers.AnyAsync(gu => gu.GroupId == groupId && gu.UserId == userId);
         if (!isMember) return TypedResults.NotFound(new UserEndpoints.ErrorResponse("Group not found."));
 
-        var totalCount = await db.Entries.CountAsync(e => e.GroupId == groupId);
-
-        var entries = await db.Entries
+        var query = db.Entries
             .AsNoTracking()
-            .Where(e => e.GroupId == groupId)
+            .Where(e => e.GroupId == groupId);
+
+        var totalCount = await query.CountAsync();
+
+        var entries = await query
+            .OrderByDescending(e => e.CreatedAt)
+            .Skip(skip)
+            .Take(take)
+            .Include(e => e.Author)
+            .Include(e => e.MediaAttachments)
+            .Include(e => e.Reactions)
+            .Select(e => new EntryResponse(
+                e.Id,
+                e.TextContent,
+                e.AuthorId,
+                e.Author.FirstName,
+                e.Author.LastName,
+                e.Author.Image,
+                e.CreatedAt,
+                e.UpdatedAt,
+                e.MediaAttachments.Select(m => new MediaResponse(m.Id, m.FilePath, m.MediaType.ToString())).ToList(),
+                e.Reactions.Select(r => new ReactionResponse(r.Id, r.EmojiCode, r.UserId)).ToList()
+            ))
+            .ToListAsync();
+
+        return TypedResults.Ok(new PaginatedEntriesResponse(entries, totalCount, skip, take));
+    }
+
+    internal static async Task<Results<Ok<PaginatedEntriesResponse>, BadRequest<UserEndpoints.ErrorResponse>, NotFound<UserEndpoints.ErrorResponse>, UnauthorizedHttpResult>> SearchEntries(
+        Guid groupId,
+        string q,
+        int skip,
+        int take,
+        ClaimsPrincipal claimsUser,
+        ApplicationDbContext db)
+    {
+        var userId = claimsUser.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId)) return TypedResults.Unauthorized();
+
+        if (string.IsNullOrWhiteSpace(q))
+            return TypedResults.BadRequest(new UserEndpoints.ErrorResponse("Search query cannot be empty."));
+
+        take = Math.Clamp(take, 1, 100);
+        skip = Math.Max(0, skip);
+
+        var isMember = await db.GroupUsers.AnyAsync(gu => gu.GroupId == groupId && gu.UserId == userId);
+        if (!isMember) return TypedResults.NotFound(new UserEndpoints.ErrorResponse("Group not found."));
+
+        IQueryable<Entry> query;
+        if (db.Database.IsNpgsql())
+        {
+            query = db.Entries
+                .AsNoTracking()
+                .Where(e => e.GroupId == groupId && EF.Functions.TrigramsAreWordSimilar(e.TextContent, q));
+        }
+        else
+        {
+            // in case database is not postgresql, just do 
+            // a simple case-insensitive-contains search
+            query = db.Entries
+                .AsNoTracking()
+                .Where(e => e.GroupId == groupId && e.TextContent.ToLower().Contains(q.ToLower()));
+        }
+
+        var totalCount = await query.CountAsync();
+
+        var entries = await query
             .OrderByDescending(e => e.CreatedAt)
             .Skip(skip)
             .Take(take)
