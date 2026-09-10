@@ -4,9 +4,9 @@ on:
   push:
     branches:
       - master
-  pull_request:
-    branches:
-      - master
+    paths:
+      - 'apps/client/**'
+      - 'apps/server/**'
 
 permissions:
   packages: write
