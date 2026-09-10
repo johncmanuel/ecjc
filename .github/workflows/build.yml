@@ -5,6 +5,7 @@ on:
     branches:
       - master
     paths:
+      - '.github/**'
       - 'apps/client/**'
       - 'apps/server/**'
 
