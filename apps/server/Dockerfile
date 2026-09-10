@@ -2,7 +2,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 COPY server.csproj ./
-RUN dotnet restore
+RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages dotnet restore
 
 COPY . ./
 RUN dotnet publish server.csproj -c Release -o /app/publish /p:UseAppHost=false -p:RunNSwag=False
