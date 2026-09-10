@@ -20,7 +20,8 @@ ARG API_URL
 ENV API_URL=$API_URL
 ARG CENTRIFUGO_URL
 ENV CENTRIFUGO_URL=$CENTRIFUGO_URL
-RUN npm run build -w client
+ARG SKIP_BUILD=false
+RUN if [ "$SKIP_BUILD" = "true" ]; then echo "Skipping client build (SKIP_BUILD=true), using prebuilt apps/client/.next from context"; else npm run build -w client; fi
 
 FROM base AS runner
 WORKDIR /app
@@ -30,13 +31,13 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/package-lock.json ./package-lock.json
+COPY --from=builder /app/apps/client/package.json ./apps/client/package.json
 COPY --from=builder /app/apps/client/public ./apps/client/public
 COPY --from=builder --chown=nextjs:nodejs /app/apps/client/.next ./apps/client/.next
-COPY --from=builder /app/apps/client/node_modules ./apps/client/node_modules
-COPY --from=builder /app/apps/client/package.json ./apps/client/package.json
 COPY --from=builder /app/apps/client/next.config.* ./apps/client/
+RUN --mount=type=cache,id=npm-cache,target=/root/.npm --mount=type=cache,id=node-modules-client,target=/app/apps/client/node_modules cd /app/apps/client && npm ci --omit=dev
 
 USER nextjs
 
