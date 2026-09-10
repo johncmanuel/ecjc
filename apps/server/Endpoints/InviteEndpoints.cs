@@ -117,8 +117,8 @@ public static class InviteEndpoints
         var siblingInvites = await db.GroupInvites
             .Where(gi => gi.GroupId == invite.GroupId && gi.Id != invite.Id && gi.Status == InviteStatus.Pending)
             .ToListAsync();
-            
-        foreach(var sibling in siblingInvites)
+
+        foreach (var sibling in siblingInvites)
         {
             db.GroupInvites.Remove(sibling);
             await centrifugo.PublishToUserAsync(sibling.InviteeId, new
@@ -228,7 +228,7 @@ public static class InviteEndpoints
         string? InviterLastName,
         string? InviterImage,
         DateTimeOffset CreatedAt);
-        
+
     internal sealed record SentInviteResponse(
         Guid Id,
         Guid GroupId,

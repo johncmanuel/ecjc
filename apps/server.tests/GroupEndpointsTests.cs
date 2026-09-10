@@ -29,9 +29,10 @@ public class GroupEndpointsTests
         var groupId = Guid.NewGuid();
 
         db.Users.Add(new User { Id = currentUserId, Email = "test1@test.com", FriendCode = "1" });
-        db.Users.Add(new User { 
-            Id = otherUserId, 
-            Email = "test2@test.com", 
+        db.Users.Add(new User
+        {
+            Id = otherUserId,
+            Email = "test2@test.com",
             FriendCode = "2",
             VenmoHandle = "othervenmo",
             CashAppHandle = "othercashapp",

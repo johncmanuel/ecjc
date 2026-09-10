@@ -137,7 +137,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             e.HasKey(en => en.Id);
             e.Property(en => en.Id).HasDefaultValueSql("gen_random_uuid()");
             e.Property(en => en.TextContent).IsRequired();
-            
+
             if (Database.IsNpgsql())
             {
                 e.HasGeneratedTsVectorColumn(
@@ -230,7 +230,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             e.Property(a => a.KeyHash).HasColumnName("keyHash");
             e.Property(a => a.Prefix).HasColumnName("prefix");
             e.Property(a => a.CreatedAt).HasColumnName("createdAt");
-            
+
             e.HasOne(a => a.User).WithMany(u => u.ApiKeys).HasForeignKey(a => a.UserId);
         });
     }

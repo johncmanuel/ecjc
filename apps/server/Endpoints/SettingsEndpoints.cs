@@ -7,7 +7,7 @@ using System.Security.Claims;
 
 public static class SettingsEndpoints
 {
-    private readonly static int _minPenaltyCents = 500; 
+    private readonly static int _minPenaltyCents = 500;
     private readonly static int _maxPenaltyCents = 2000;
 
     public static void RegisterSettingsEndpoints(this IEndpointRouteBuilder routes)
@@ -105,7 +105,7 @@ public static class SettingsEndpoints
         {
             groupUser.AccumulatedPenaltyCents = 0;
             await db.SaveChangesAsync();
-            
+
             var notificationPayload = new { type = "debt_settled", amount = 0, groupId = groupId };
             await centrifugo.PublishAsync($"user#{userId}", notificationPayload);
         }
@@ -144,7 +144,7 @@ public static class SettingsEndpoints
         if (userId == null) return TypedResults.Unauthorized();
 
         var token = "ecjc_live_" + Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32)).TrimEnd('=').Replace("+", "-").Replace("/", "_");
-        
+
         // Generate SHA256 hash of the token for storage
         using var sha256 = System.Security.Cryptography.SHA256.Create();
         var hashBytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(token));
@@ -159,8 +159,8 @@ public static class SettingsEndpoints
             KeyHash = keyHash,
             Prefix = prefix,
             CreatedAt = DateTimeOffset.UtcNow,
-            ExpiresAt = req.ExpiresInDays.HasValue && req.ExpiresInDays.Value > 0 
-                ? DateTimeOffset.UtcNow.AddDays(req.ExpiresInDays.Value) 
+            ExpiresAt = req.ExpiresInDays.HasValue && req.ExpiresInDays.Value > 0
+                ? DateTimeOffset.UtcNow.AddDays(req.ExpiresInDays.Value)
                 : null
         };
 

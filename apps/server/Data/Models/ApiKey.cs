@@ -9,6 +9,6 @@ public class ApiKey
     public string Prefix { get; set; } = string.Empty;
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? ExpiresAt { get; set; }
-    
+
     public User User { get; set; } = null!;
 }

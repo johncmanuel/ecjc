@@ -119,7 +119,7 @@ public static class GroupEndpoints
         if (group is null) return TypedResults.NotFound(new UserEndpoints.ErrorResponse("Group not found."));
 
         if (!group.GroupUsers.Any(gu => gu.UserId == currentUserId && gu.LeftAt == null))
-            return TypedResults.NotFound(new UserEndpoints.ErrorResponse("Group not found.")); 
+            return TypedResults.NotFound(new UserEndpoints.ErrorResponse("Group not found."));
 
         // If the group has a Left member, it technically has 2 GroupUser records, so it's "full". 
         // Thus, we shouldn't invite someone new. Capacity check automatically handles this.
@@ -176,7 +176,7 @@ public static class GroupEndpoints
         if (string.IsNullOrEmpty(currentUserId)) return TypedResults.Unauthorized();
 
         var groupUser = await db.GroupUsers.FirstOrDefaultAsync(gu => gu.GroupId == id && gu.UserId == currentUserId);
-        
+
         if (groupUser is null || groupUser.LeftAt != null)
             return TypedResults.NotFound(new UserEndpoints.ErrorResponse("Group not found or already left."));
 
@@ -213,7 +213,7 @@ public static class GroupEndpoints
         if (group is null) return TypedResults.NotFound(new UserEndpoints.ErrorResponse("Group not found."));
 
         if (!group.GroupUsers.Any(gu => gu.UserId == currentUserId && gu.LeftAt == null))
-            return TypedResults.NotFound(new UserEndpoints.ErrorResponse("Group not found.")); 
+            return TypedResults.NotFound(new UserEndpoints.ErrorResponse("Group not found."));
 
         var userWhoLeft = group.GroupUsers.FirstOrDefault(gu => gu.LeftAt != null);
         if (userWhoLeft is null)

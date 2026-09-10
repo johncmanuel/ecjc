@@ -28,19 +28,19 @@ builder.Services.AddOpenApiDocument(config =>
 
 builder.Services.AddCors(options =>
 {
-	options.AddPolicy("DevCorsPolicy", policy =>
-	{
-		policy.WithOrigins("http://localhost:3000", "http://127.0.0.1:3000")
-			.AllowAnyHeader()
-			.AllowAnyMethod();
-	});
+    options.AddPolicy("DevCorsPolicy", policy =>
+    {
+        policy.WithOrigins("http://localhost:3000", "http://127.0.0.1:3000")
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
 });
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-	?? throw new InvalidOperationException("Missing ConnectionStrings__DefaultConnection environment variable.");
+    ?? throw new InvalidOperationException("Missing ConnectionStrings__DefaultConnection environment variable.");
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-	options.UseNpgsql(connectionString));
+    options.UseNpgsql(connectionString));
 
 builder.Services.AddSingleton<IStorageService, LocalStorageService>();
 builder.Services.AddSingleton<CentrifugoService>();
@@ -50,38 +50,38 @@ builder.Services.AddScoped<IStreakEvaluationService, StreakEvaluationService>();
 builder.Services.AddHostedService<StreakMonitorBackgroundService>();
 
 var betterAuthUrl = builder.Configuration["Auth:BaseUrl"]
-	?? Environment.GetEnvironmentVariable("BETTER_AUTH_URL")
-	?? "http://localhost:3000";
+    ?? Environment.GetEnvironmentVariable("BETTER_AUTH_URL")
+    ?? "http://localhost:3000";
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-	.AddJwtBearer(options =>
-	{
-		// NOTE: better-auth's jwt() plugin signs tokens with EdDSA by default (https://better-auth.com/docs/plugins/jwt#algorithm-of-the-key-pair).
-		// Validate them using the JWKS endpoint it exposes.
-		options.RequireHttpsMetadata = false;
-		options.TokenValidationParameters = new TokenValidationParameters
-		{
-			ValidateIssuerSigningKey = true,
-			ValidateIssuer = false,
-			ValidateAudience = false,
-			ValidateLifetime = true,
-			ClockSkew = TimeSpan.FromMinutes(1),
-		};
-		options.Events = new JwtBearerEvents
-		{
-			OnMessageReceived = async ctx =>
-			{
-				if (ctx.Options.TokenValidationParameters.IssuerSigningKeys == null ||
-					!ctx.Options.TokenValidationParameters.IssuerSigningKeys.Any())
-				{
-					using var http = new HttpClient();
-					var jwksJson = await http.GetStringAsync($"{betterAuthUrl}/api/auth/jwks");
-					var jwks = new JsonWebKeySet(jwksJson);
-					ctx.Options.TokenValidationParameters.IssuerSigningKeys = jwks.GetSigningKeys();
-				}
-			}
-		};
-	});
+    .AddJwtBearer(options =>
+    {
+        // NOTE: better-auth's jwt() plugin signs tokens with EdDSA by default (https://better-auth.com/docs/plugins/jwt#algorithm-of-the-key-pair).
+        // Validate them using the JWKS endpoint it exposes.
+        options.RequireHttpsMetadata = false;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            ValidateIssuer = false,
+            ValidateAudience = false,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(1),
+        };
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = async ctx =>
+            {
+                if (ctx.Options.TokenValidationParameters.IssuerSigningKeys == null ||
+                    !ctx.Options.TokenValidationParameters.IssuerSigningKeys.Any())
+                {
+                    using var http = new HttpClient();
+                    var jwksJson = await http.GetStringAsync($"{betterAuthUrl}/api/auth/jwks");
+                    var jwks = new JsonWebKeySet(jwksJson);
+                    ctx.Options.TokenValidationParameters.IssuerSigningKeys = jwks.GetSigningKeys();
+                }
+            }
+        };
+    });
 
 builder.Services.AddAuthorization();
 
@@ -97,7 +97,7 @@ using (var scope = app.Services.CreateScope())
     }
     catch (Exception ex)
     {
-		// probably better to skip the migration
+        // probably better to skip the migration
         Console.WriteLine($"Skipping migration during build: {ex.Message}");
     }
 }

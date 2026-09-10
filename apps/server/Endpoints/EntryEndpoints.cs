@@ -162,7 +162,7 @@ public static class EntryEndpoints
         };
 
         db.Entries.Add(entry);
-        
+
         var group = await db.Groups.FindAsync(groupId);
         if (group != null)
         {
@@ -204,7 +204,7 @@ public static class EntryEndpoints
             .FirstOrDefaultAsync(e => e.Id == id);
 
         if (entry is null) return TypedResults.NotFound(new UserEndpoints.ErrorResponse("Entry not found."));
-        if (entry.AuthorId != userId) return TypedResults.NotFound(new UserEndpoints.ErrorResponse("Entry not found.")); 
+        if (entry.AuthorId != userId) return TypedResults.NotFound(new UserEndpoints.ErrorResponse("Entry not found."));
 
         var wordCount = request.TextContent.Split([' ', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries).Length;
         if (wordCount < _minWordCount) return TypedResults.BadRequest(new UserEndpoints.ErrorResponse($"Entry must be at least {_minWordCount} words."));
@@ -250,13 +250,13 @@ public static class EntryEndpoints
     internal sealed record MediaResponse(Guid Id, string Url, string MediaType);
     internal sealed record ReactionResponse(Guid Id, string EmojiCode, string UserId);
     internal sealed record EntryResponse(
-        Guid Id, 
-        string TextContent, 
-        string AuthorId, 
-        string? AuthorFirstName, 
-        string? AuthorLastName, 
+        Guid Id,
+        string TextContent,
+        string AuthorId,
+        string? AuthorFirstName,
+        string? AuthorLastName,
         string? AuthorImage,
-        DateTimeOffset CreatedAt, 
+        DateTimeOffset CreatedAt,
         DateTimeOffset UpdatedAt,
         List<MediaResponse> Media,
         List<ReactionResponse> Reactions);

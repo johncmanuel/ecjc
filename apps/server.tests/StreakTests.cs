@@ -43,7 +43,7 @@ public class StreakEvaluationTests
         db.GroupUsers.Add(new GroupUser { GroupId = groupId, UserId = user2Id });
 
         var targetDate = new DateTime(2023, 10, 10, 0, 0, 0, DateTimeKind.Utc);
-        
+
         db.Entries.Add(new Entry { Id = Guid.NewGuid(), GroupId = groupId, AuthorId = user1Id, TextContent = "a", CreatedAt = targetDate.AddHours(5) });
         db.Entries.Add(new Entry { Id = Guid.NewGuid(), GroupId = groupId, AuthorId = user2Id, TextContent = "b", CreatedAt = targetDate.AddHours(10) });
         await db.SaveChangesAsync();
@@ -52,7 +52,7 @@ public class StreakEvaluationTests
 
         var updatedGroup = await db.Groups.FindAsync(groupId);
         Assert.Equal(2, updatedGroup!.StreakCount);
-        
+
     }
 
     [Fact]
@@ -75,7 +75,7 @@ public class StreakEvaluationTests
         db.GroupUsers.Add(new GroupUser { GroupId = groupId, UserId = user2Id });
 
         var targetDate = new DateTime(2023, 10, 10, 0, 0, 0, DateTimeKind.Utc);
-        
+
         // Only User1 posted
         db.Entries.Add(new Entry { Id = Guid.NewGuid(), GroupId = groupId, AuthorId = user1Id, TextContent = "a", CreatedAt = targetDate.AddHours(5) });
         await db.SaveChangesAsync();
@@ -84,10 +84,10 @@ public class StreakEvaluationTests
 
         var updatedGroup = await db.Groups.FindAsync(groupId);
         Assert.Equal(0, updatedGroup!.StreakCount); // Streak broken
-        
+
         var slackerGroupUser = await db.GroupUsers.FirstAsync(gu => gu.UserId == user2Id && gu.GroupId == groupId);
         var goodGroupUser = await db.GroupUsers.FirstAsync(gu => gu.UserId == user1Id && gu.GroupId == groupId);
-        
+
         Assert.Equal(500, slackerGroupUser.AccumulatedPenaltyCents);
         Assert.Equal(0, goodGroupUser.AccumulatedPenaltyCents);
     }
@@ -112,7 +112,7 @@ public class StreakEvaluationTests
         db.GroupUsers.Add(new GroupUser { GroupId = groupId, UserId = user2Id });
 
         var targetDate = new DateTime(2023, 10, 10, 0, 0, 0, DateTimeKind.Utc);
-        
+
         // Neither posted on targetDate
         db.Entries.Add(new Entry { Id = Guid.NewGuid(), GroupId = groupId, AuthorId = user1Id, TextContent = "a", CreatedAt = targetDate.AddDays(-1) });
         await db.SaveChangesAsync();
@@ -121,7 +121,7 @@ public class StreakEvaluationTests
 
         var updatedGroup = await db.Groups.FindAsync(groupId);
         Assert.Equal(0, updatedGroup!.StreakCount); // Streak broken
-        
+
         var gu1 = await db.GroupUsers.FirstAsync(gu => gu.UserId == user1Id && gu.GroupId == groupId);
         var gu2 = await db.GroupUsers.FirstAsync(gu => gu.UserId == user2Id && gu.GroupId == groupId);
 

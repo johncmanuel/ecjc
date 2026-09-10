@@ -19,7 +19,7 @@ public class User
     public string? StripeCustomerId { get; set; }
     public bool IsPenaltyEnabled { get; set; } = false;
     public int PenaltyAmount { get; set; } = 500; // in cents, default $5.00
-    
+
     public string? VenmoHandle { get; set; }
     public string? CashAppHandle { get; set; }
     public string? PayPalHandle { get; set; }

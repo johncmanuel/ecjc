@@ -16,7 +16,7 @@ public class StreakMonitorBackgroundService(
         while (!stoppingToken.IsCancellationRequested)
         {
             var now = _timeProvider.GetUtcNow();
-            
+
 #if DEBUG
             var delay = TimeSpan.FromSeconds(30);
             _logger.LogInformation("DEBUG MODE: Next streak evaluation scheduled in 30 seconds.");

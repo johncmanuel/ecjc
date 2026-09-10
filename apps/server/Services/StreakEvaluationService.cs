@@ -14,7 +14,7 @@ public interface IStreakEvaluationService
 public class StreakEvaluationService(
     ApplicationDbContext db,
     ILogger<StreakEvaluationService> logger) : IStreakEvaluationService
-{                            
+{
     private readonly ApplicationDbContext _db = db;
     private readonly ILogger<StreakEvaluationService> _logger = logger;
 
@@ -23,7 +23,7 @@ public class StreakEvaluationService(
         var targetDate = dateToEvaluate.Date;
         var targetStart = new DateTimeOffset(DateTime.SpecifyKind(targetDate, DateTimeKind.Utc));
         var targetEnd = targetStart.AddDays(1);
-        
+
         _logger.LogInformation("Starting daily streak evaluation for {Date}", targetDate.ToShortDateString());
 
         var activeGroups = await _db.Groups
@@ -47,9 +47,9 @@ public class StreakEvaluationService(
             {
                 var user = groupUser.User;
                 var posted = await _db.Entries
-                    .AnyAsync(e => e.GroupId == group.Id 
-                                   && e.AuthorId == user.Id 
-                                   && e.CreatedAt >= targetStart 
+                    .AnyAsync(e => e.GroupId == group.Id
+                                   && e.AuthorId == user.Id
+                                   && e.CreatedAt >= targetStart
                                    && e.CreatedAt < targetEnd, cancellationToken);
 
                 if (!posted)
@@ -75,7 +75,7 @@ public class StreakEvaluationService(
                     if (slackerUser.IsPenaltyEnabled && slackerUser.PenaltyAmount > 0)
                     {
                         slacker.AccumulatedPenaltyCents += slackerUser.PenaltyAmount;
-                        _logger.LogInformation("Added penalty of {Amount} cents to {Email}. New total: {Total} cents.", 
+                        _logger.LogInformation("Added penalty of {Amount} cents to {Email}. New total: {Total} cents.",
                             slackerUser.PenaltyAmount, slackerUser.Email, slacker.AccumulatedPenaltyCents);
                     }
                 }
