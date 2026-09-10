@@ -9,48 +9,48 @@ import { usePathname } from "next/navigation";
 
 // the overall header that contains the group header and the settings button, and hides on scroll down
 export function TopHeader() {
-  const scrollDirection = useScrollDirection();
-  const pathname = usePathname();
+	const scrollDirection = useScrollDirection();
+	const pathname = usePathname();
 
-  // bring user to top of page when clicking on the title if already on the home page
-  const handleHeaderClick = (e: React.MouseEvent) => {
-    if (pathname !== "/") return;
+	// bring user to top of page when clicking on the title if already on the home page
+	const handleHeaderClick = (e: React.MouseEvent) => {
+		if (pathname !== "/") return;
 
-    const target = e.target as HTMLElement;
-    if (target.closest('button') || target.closest('a')) {
-      return;
-    }
+		const target = e.target as HTMLElement;
+		if (target.closest("button") || target.closest("a")) {
+			return;
+		}
 
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
+		window.scrollTo({ top: 0, behavior: "smooth" });
+	};
 
-  return (
-    <header 
-      onClick={handleHeaderClick}
-      className={`sticky top-0 z-50 bg-paper/80 backdrop-blur-md px-6 py-4 border-b border-line flex items-center justify-between transition-transform duration-300 ${
-        scrollDirection === "down" ? "-translate-y-full" : "translate-y-0"
-      }`}
-    >
-      <GroupHeader />
-      <div className="flex items-center gap-1">
-        <Link 
-          href="/invite" 
-          aria-label="Join New Group"
-          title="Join New Group"
-          className="p-2 text-ink-soft hover:text-ink transition-colors rounded-full hover:bg-black/5 dark:hover:bg-white/5"
-        >
-          <UserPlus size={20} />
-        </Link>
-        <ThemeToggle />
-        <Link 
-          href="/settings" 
-          aria-label="Settings"
-          title="Settings"
-          className="p-2 text-ink-soft hover:text-ink transition-colors rounded-full hover:bg-black/5 dark:hover:bg-white/5"
-        >
-          <Settings size={20} />
-        </Link>
-      </div>
-    </header>
-  );
+	return (
+		<header
+			onClick={handleHeaderClick}
+			className={`sticky top-0 z-50 bg-paper/80 backdrop-blur-md px-6 py-4 border-b border-line flex items-center justify-between transition-transform duration-300 ${
+				scrollDirection === "down" ? "-translate-y-full" : "translate-y-0"
+			}`}
+		>
+			<GroupHeader />
+			<div className="flex items-center gap-1">
+				<Link
+					href="/invite"
+					aria-label="Join New Group"
+					title="Join New Group"
+					className="p-2 text-ink-soft hover:text-ink transition-colors rounded-full hover:bg-black/5 dark:hover:bg-white/5"
+				>
+					<UserPlus size={20} />
+				</Link>
+				<ThemeToggle />
+				<Link
+					href="/settings"
+					aria-label="Settings"
+					title="Settings"
+					className="p-2 text-ink-soft hover:text-ink transition-colors rounded-full hover:bg-black/5 dark:hover:bg-white/5"
+				>
+					<Settings size={20} />
+				</Link>
+			</div>
+		</header>
+	);
 }

@@ -8,10 +8,10 @@ loadEnvConfig(path.resolve(process.cwd(), "../../"));
 const backendUrl = process.env.API_URL || "http://localhost:5186";
 
 const centrifugoUrl =
-  process.env.CENTRIFUGO_URL ||
-  (process.env.NODE_ENV === "development"
-    ? "http://localhost:8000"
-    : "http://centrifugo:8000");
+	process.env.CENTRIFUGO_URL ||
+	(process.env.NODE_ENV === "development"
+		? "http://localhost:8000"
+		: "http://centrifugo:8000");
 
 const nextConfig: NextConfig = {
 	turbopack: {
@@ -32,7 +32,7 @@ const nextConfig: NextConfig = {
 				destination: `${backendUrl}/uploads/:path*`,
 			},
 			{
-				// redirect all paths except /api/auth/* to server 
+				// redirect all paths except /api/auth/* to server
 				source: "/api/:path((?!auth).*)",
 				destination: `${backendUrl}/api/:path*`,
 			},

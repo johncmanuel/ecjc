@@ -3,10 +3,15 @@
 	"vcs": {
 		"enabled": false,
 		"clientKind": "git",
-		"useIgnoreFile": true 
+		"useIgnoreFile": true
 	},
 	"files": {
-		"includes": ["apps/client/**/*", "!apps/client/src/lib/api.ts"]
+		"includes": [
+			"apps/client/**/*",
+			"!apps/client/src/lib/api.ts",
+			"!apps/client/.next/**/*",
+			"!apps/client/public/**/*"
+		]
 	},
 	"formatter": {
 		"enabled": true,
@@ -24,6 +29,11 @@
 			"source": {
 				"organizeImports": "on"
 			}
+		}
+	},
+	"css": {
+		"parser": {
+			"tailwindDirectives": true
 		}
 	}
 }

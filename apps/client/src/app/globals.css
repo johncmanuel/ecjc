@@ -3,71 +3,80 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --color-paper: var(--paper);
-  --color-paper-deep: var(--paper-deep);
-  --color-card: var(--card);
-  --color-ink: var(--ink);
-  --color-ink-soft: var(--ink-soft);
-  --color-ink-faint: var(--ink-faint);
-  --color-thread-a: var(--thread-a);
-  --color-thread-a-soft: var(--thread-a-soft);
-  --color-thread-b: var(--thread-b);
-  --color-thread-b-soft: var(--thread-b-soft);
-  --color-glow: var(--glow);
-  --color-glow-soft: var(--glow-soft);
-  --color-line: var(--line);
-  --color-btn-text: var(--btn-text);
+	--color-paper: var(--paper);
+	--color-paper-deep: var(--paper-deep);
+	--color-card: var(--card);
+	--color-ink: var(--ink);
+	--color-ink-soft: var(--ink-soft);
+	--color-ink-faint: var(--ink-faint);
+	--color-thread-a: var(--thread-a);
+	--color-thread-a-soft: var(--thread-a-soft);
+	--color-thread-b: var(--thread-b);
+	--color-thread-b-soft: var(--thread-b-soft);
+	--color-glow: var(--glow);
+	--color-glow-soft: var(--glow-soft);
+	--color-line: var(--line);
+	--color-btn-text: var(--btn-text);
 
-  --font-serif: var(--font-fraunces), serif;
-  --font-sans: var(--font-work-sans), sans-serif;
+	--font-serif: var(--font-fraunces), serif;
+	--font-sans: var(--font-work-sans), sans-serif;
 
-  --animate-flicker: flicker 3.2s ease-in-out infinite;
+	--animate-flicker: flicker 3.2s ease-in-out infinite;
 }
 
 @keyframes flicker {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.85; transform: scale(0.94); }
+	0%,
+	100% {
+		opacity: 1;
+		transform: scale(1);
+	}
+	50% {
+		opacity: 0.85;
+		transform: scale(0.94);
+	}
 }
 
 :root {
-  --paper: #EDEFEA;
-  --paper-deep: #E3E6DE;
-  --card: #F7F8F4;
-  --ink: #2E332F;
-  --ink-soft: #6B7169;
-  --ink-faint: #9BA097;
-  --thread-a: #6E8F8A;
-  --thread-a-soft: #DCE5E2;
-  --thread-b: #9C8AA0;
-  --thread-b-soft: #E7E1E8;
-  --glow: #D3A24E;
-  --glow-soft: #F1E3C6;
-  --line: #D7DAD1;
-  --btn-text: #FCFCFA;
+	--paper: #edefea;
+	--paper-deep: #e3e6de;
+	--card: #f7f8f4;
+	--ink: #2e332f;
+	--ink-soft: #6b7169;
+	--ink-faint: #9ba097;
+	--thread-a: #6e8f8a;
+	--thread-a-soft: #dce5e2;
+	--thread-b: #9c8aa0;
+	--thread-b-soft: #e7e1e8;
+	--glow: #d3a24e;
+	--glow-soft: #f1e3c6;
+	--line: #d7dad1;
+	--btn-text: #fcfcfa;
 }
 
 .dark {
-  --paper: #1B1F1C;
-  --paper-deep: #242923;
-  --card: #22261F;
-  --ink: #E7E9E1;
-  --ink-soft: #A7ADA2;
-  --ink-faint: #767C71;
-  --thread-a: #8FB3AE;
-  --thread-a-soft: #2B3A37;
-  --thread-b: #BBA6C4;
-  --thread-b-soft: #362E3C;
-  --glow: #E0B564;
-  --glow-soft: #3A2F1C;
-  --line: #33372F;
-  --btn-text: #1B1F1C;
+	--paper: #1b1f1c;
+	--paper-deep: #242923;
+	--card: #22261f;
+	--ink: #e7e9e1;
+	--ink-soft: #a7ada2;
+	--ink-faint: #767c71;
+	--thread-a: #8fb3ae;
+	--thread-a-soft: #2b3a37;
+	--thread-b: #bba6c4;
+	--thread-b-soft: #362e3c;
+	--glow: #e0b564;
+	--glow-soft: #3a2f1c;
+	--line: #33372f;
+	--btn-text: #1b1f1c;
 }
 
 body {
-  background-color: var(--paper);
-  color: var(--ink);
+	background-color: var(--paper);
+	color: var(--ink);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-flicker { animation: none !important; }
+	.animate-flicker {
+		animation: none !important;
+	}
 }

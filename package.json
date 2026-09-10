@@ -9,7 +9,10 @@
     "dev:server": "dotnet run --project apps/server",
     "dev": "trap 'kill 0' EXIT INT TERM; npm run dev:client & npm run dev:server & wait",
     "db:wipe": "dotnet ef database drop -f --project apps/server && dotnet ef database update --project apps/server",
-    "gen:secret": "openssl rand -base64 32"
+    "gen:secret": "openssl rand -base64 32",
+    "format": "biome format --write",
+    "lint": "biome lint --write",
+    "check": "biome check --write"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.8"
